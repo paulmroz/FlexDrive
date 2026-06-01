@@ -1,0 +1,6 @@
+# Local developer notes
+/.notes/
+
+# IDE files
+.vscode/
+.idea/
