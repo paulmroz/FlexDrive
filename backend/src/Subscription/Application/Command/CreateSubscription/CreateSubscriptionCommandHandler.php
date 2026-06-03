@@ -14,6 +14,7 @@ use App\Subscription\Domain\ValueObject\SubscriptionStatus;
 use Doctrine\DBAL\LockMode;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use InvalidArgumentException;
+use DomainException;
 
 /**
  * @see CreateSubscriptionCommand
@@ -37,7 +38,19 @@ class CreateSubscriptionCommandHandler
             throw new InvalidArgumentException(message: 'Car not found.');
         }
 
-        $car->book();
+        if (false === $car->isAvailable()) {
+            throw new DomainException(message: 'Car is already booked/unavailable.');
+        }
+
+        $overlapping = $this->subscriptionRepository->findOverlappingSubscriptions(
+            carId: $carId,
+            startDate: $command->startDate,
+            endDate: $command->endDate
+        );
+
+        if ([] !== $overlapping) {
+            throw new DomainException(message: 'Car is already booked/unavailable.');
+        }
 
         $subscription = new Subscription(
             id: SubscriptionId::generate(),

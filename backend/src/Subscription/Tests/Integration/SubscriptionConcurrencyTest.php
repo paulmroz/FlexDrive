@@ -88,8 +88,6 @@ class SubscriptionConcurrencyTest extends KernelTestCase
         fclose(stream: $pipes2[0]);
         fclose(stream: $pipes2[1]);
         fclose(stream: $pipes2[2]);
-        proc_close(process: $process2);
-
         $outputs = [
             trim(string: $output1),
             trim(string: $output2),

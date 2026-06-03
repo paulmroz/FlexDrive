@@ -108,4 +108,13 @@ class Subscription
         $this->status = SubscriptionStatus::CANCELLED;
         $this->endDate = $cancelledAt;
     }
+
+    public function reactivate(): void
+    {
+        if (SubscriptionStatus::CANCELLED !== $this->status) {
+            throw new DomainException(message: 'Only cancelled subscriptions can be reactivated.');
+        }
+
+        $this->status = SubscriptionStatus::ACTIVE;
+    }
 }

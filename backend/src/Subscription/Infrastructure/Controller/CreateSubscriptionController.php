@@ -10,7 +10,6 @@ use App\User\Infrastructure\Security\SecurityUser;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
-use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
@@ -31,20 +30,12 @@ class CreateSubscriptionController extends AbstractController
         $startDate = new DateTimeImmutable(datetime: $request->startDate);
         $endDate = null !== $request->endDate ? new DateTimeImmutable(datetime: $request->endDate) : null;
 
-        try {
-            $messageBus->dispatch(message: new CreateSubscriptionCommand(
-                userId: $user->getId()->getValue(),
-                carId: $request->carId,
-                startDate: $startDate,
-                endDate: $endDate
-            ));
-        } catch (HandlerFailedException $e) {
-            $originalException = $e->getPrevious() ?? $e;
-            return new JsonResponse(
-                data: ['error' => $originalException->getMessage()],
-                status: JsonResponse::HTTP_UNPROCESSABLE_ENTITY
-            );
-        }
+        $messageBus->dispatch(message: new CreateSubscriptionCommand(
+            userId: $user->getId()->getValue(),
+            carId: $request->carId,
+            startDate: $startDate,
+            endDate: $endDate
+        ));
 
         return new JsonResponse(
             data: ['message' => 'Subscription created successfully.'],

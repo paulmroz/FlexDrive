@@ -6,6 +6,7 @@ namespace App\Subscription\Tests\Integration;
 
 use App\Car\Domain\Entity\Car;
 use App\Car\Domain\ValueObject\CarId;
+use App\Subscription\Domain\Entity\Subscription;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -85,18 +86,49 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
             actual: $this->client->getResponse()->getStatusCode()
         );
 
-        $responseContent = $this->client->getResponse()->getContent();
-        $this->assertNotFalse($responseContent);
-        $data = json_decode(json: $responseContent, associative: true);
-        $this->assertSame(
-            expected: 'Subscription created successfully.',
-            actual: $data['message']
+        $this->entityManager->clear();
+        $subscription = $this->entityManager
+            ->getRepository(Subscription::class)
+            ->findOneBy(['carId' => $carId->getValue()]);
+        $this->assertNotNull(actual: $subscription);
+
+        $this->client->request(
+            method: 'POST',
+            uri: '/api/subscriptions',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+            ],
+            content: (string) json_encode(value: [
+                'carId' => $carId->getValue(),
+                'startDate' => '2026-06-08 14:59:59',
+                'endDate' => '2026-06-15 12:00:00',
+            ])
         );
 
-        $this->entityManager->clear();
-        $updatedCar = $this->entityManager->find(className: Car::class, id: $carId->getValue());
-        $this->assertNotNull($updatedCar);
-        $this->assertFalse($updatedCar->isAvailable());
+        $this->assertSame(
+            expected: Response::HTTP_UNPROCESSABLE_ENTITY,
+            actual: $this->client->getResponse()->getStatusCode()
+        );
+
+        $this->client->request(
+            method: 'POST',
+            uri: '/api/subscriptions',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+            ],
+            content: (string) json_encode(value: [
+                'carId' => $carId->getValue(),
+                'startDate' => '2026-06-08 15:00:00',
+                'endDate' => '2026-06-15 12:00:00',
+            ])
+        );
+
+        $this->assertSame(
+            expected: Response::HTTP_CREATED,
+            actual: $this->client->getResponse()->getStatusCode()
+        );
     }
 
     public function testValidationErrors(): void
@@ -123,6 +155,24 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
             expected: Response::HTTP_UNPROCESSABLE_ENTITY,
             actual: $this->client->getResponse()->getStatusCode()
         );
+
+        $responseContent = $this->client->getResponse()->getContent();
+        $this->assertNotFalse($responseContent);
+        $data = json_decode(json: $responseContent, associative: true);
+
+        $this->assertSame(expected: 'https://tools.ietf.org/html/rfc7807', actual: $data['type']);
+        $this->assertSame(expected: 'Validation Failed', actual: $data['title']);
+        $this->assertSame(expected: 422, actual: $data['status']);
+        $this->assertSame(expected: 'One or more fields failed validation.', actual: $data['detail']);
+        $this->assertCount(expectedCount: 2, haystack: $data['invalid_params']);
+
+        $names = array_column(array: $data['invalid_params'], column_key: 'name');
+        $reasons = array_column(array: $data['invalid_params'], column_key: 'reason');
+
+        $this->assertContains(needle: 'carId', haystack: $names);
+        $this->assertContains(needle: 'startDate', haystack: $names);
+        $this->assertContains(needle: 'Car ID must be a valid UUID.', haystack: $reasons);
+        $this->assertContains(needle: 'Start date must be in Y-m-d H:i:s format.', haystack: $reasons);
     }
 
     public function testCarNotFound(): void
@@ -155,7 +205,11 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
         $data = json_decode(json: $responseContent, associative: true);
         $this->assertSame(
             expected: 'Car not found.',
-            actual: $data['error']
+            actual: $data['detail']
+        );
+        $this->assertSame(
+            expected: 'Business Rule Violation',
+            actual: $data['title']
         );
     }
 
@@ -200,7 +254,7 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
         $data = json_decode(json: $responseContent, associative: true);
         $this->assertSame(
             expected: 'Car is already booked/unavailable.',
-            actual: $data['error']
+            actual: $data['detail']
         );
     }
 
