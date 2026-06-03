@@ -44,4 +44,13 @@ class DoctrineCarRepository extends ServiceEntityRepository implements CarReposi
     {
         return $this->findAll();
     }
+
+    /**
+     * @return array<Car>
+     */
+    public function findAvailableCars(): array
+    {
+        return $this->findBy(criteria: ['available' => true]);
+    }
 }
+

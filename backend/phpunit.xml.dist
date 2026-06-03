@@ -28,6 +28,10 @@
         <env name="JWT_PUBLIC_KEY" value="%kernel.project_dir%/config/jwt/public.pem"/>
         <env name="JWT_PASSPHRASE" value="f526deebdc814809fbeb63fcb7293c80779dd75dea66175d7a00c8d70f1cf050"/>
         <!-- ###- lexik/jwt-authentication-bundle ### -->
+
+        <!-- ###+ symfony/ai-open-ai-platform ### -->
+        <env name="OPENAI_API_KEY" value=""/>
+        <!-- ###- symfony/ai-open-ai-platform ### -->
     </php>
 
     <testsuites>

@@ -1,0 +1,30 @@
+ai:
+    platform:
+        openai:
+            api_key: '%env(DEEPSEEK_API_KEY)%'
+            http_client: 'deepseek.client'
+
+    agent:
+        # Agent configuration
+        # see https://symfony.com/doc/current/ai/bundles/ai-bundle.html
+
+        default:
+            model: 'deepseek-chat'
+        #    prompt: |
+        #        You are a pirate and you write funny.
+        #    tools:
+        #        - 'Symfony\AI\Agent\Bridge\Clock\Clock'
+
+    message_store:
+        redis:
+            service:
+                client: 'redis_client'
+                index_name: 'ai_chat'
+
+    store:
+        # Store configuration
+
+        # chromadb:
+        #    default:
+        #        client: 'client.service.id'
+        #        collection: 'my_collection'

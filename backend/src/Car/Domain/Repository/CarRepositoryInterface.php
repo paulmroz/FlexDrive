@@ -19,4 +19,10 @@ interface CarRepositoryInterface
      * @return array<Car>
      */
     public function findAllCars(): array;
+
+    /**
+     * @return array<Car>
+     */
+    public function findAvailableCars(): array;
 }
+

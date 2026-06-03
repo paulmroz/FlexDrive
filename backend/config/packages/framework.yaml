@@ -2,8 +2,12 @@
 framework:
     secret: '%env(APP_SECRET)%'
 
-    # Note that the session will be started ONLY if you read or write from it.
     session: true
+
+    http_client:
+        scoped_clients:
+            deepseek.client:
+                base_uri: 'https://api.deepseek.com/v1'
 
     #esi: true
     #fragments: true

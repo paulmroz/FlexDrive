@@ -11,3 +11,13 @@ if (file_exists(dirname(__DIR__).'/config/bootstrap.php')) {
 } elseif (method_exists(Dotenv::class, 'bootEnv')) {
     (new Dotenv())->bootEnv(dirname(__DIR__).'/.env');
 }
+
+if (!class_exists(\Redis::class)) {
+    class Redis
+    {
+        public function publish(string $channel, string $message): int|false
+        {
+            return 1;
+        }
+    }
+}

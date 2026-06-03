@@ -13,6 +13,10 @@
         "doctrine/doctrine-migrations-bundle": "^3.7",
         "doctrine/orm": "^2.19",
         "lexik/jwt-authentication-bundle": "^3.2",
+        "symfony/ai-bundle": "*",
+        "symfony/ai-chat": "^0.9.0",
+        "symfony/ai-open-ai-platform": "*",
+        "symfony/ai-redis-message-store": "^0.9.0",
         "symfony/console": "7.4.*",
         "symfony/dotenv": "7.4.*",
         "symfony/flex": "^2",
@@ -36,7 +40,8 @@
         "platform": {
             "php": "8.3.15"
         },
-        "sort-packages": true
+        "sort-packages": true,
+        "platform-check": false
     },
     "autoload": {
         "psr-4": {

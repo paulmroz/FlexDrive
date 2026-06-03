@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace App\Subscription\Application\Command\RefundPayment;
 
+use App\Subscription\Application\Command\RefundPayment\RefundPaymentCommandHandler;
+
+/**
+ * @see RefundPaymentCommandHandler
+ */
 class RefundPaymentCommand
 {
     public function __construct(
