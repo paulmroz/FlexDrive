@@ -1,0 +1,54 @@
+nelmio_api_doc:
+    documentation:
+        openapi: 3.0.0
+        info:
+            title: DriveAgency API
+            description: Auto-generated OpenAPI schema for the DriveAgency car subscription platform.
+            version: 1.0.0
+        paths:
+            /api/login:
+                post:
+                    operationId: post_api_login
+                    summary: User authentication to obtain JWT token
+                    requestBody:
+                        required: true
+                        content:
+                            application/json:
+                                schema:
+                                    type: object
+                                    required:
+                                        - email
+                                        - password
+                                    properties:
+                                        email:
+                                            type: string
+                                            format: email
+                                        password:
+                                            type: string
+                    responses:
+                        '200':
+                            description: Successful authentication
+                            content:
+                                application/json:
+                                    schema:
+                                        type: object
+                                        required:
+                                            - token
+                                        properties:
+                                            token:
+                                                type: string
+                                                description: JWT token
+                        '401':
+                            description: Invalid credentials
+        components:
+            securitySchemes:
+                Bearer:
+                    type: http
+                    scheme: bearer
+                    bearerFormat: JWT
+        security:
+            - Bearer: []
+    areas:
+        default:
+            path_patterns:
+                - ^/api(?!/doc$)
