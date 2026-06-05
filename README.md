@@ -1,57 +1,50 @@
-# FlexDrive — Enterprise Car Subscription Platform
+# DriveAgency
 
-FlexDrive is a high-performance, modular monolith backend built in Symfony 7. It demonstrates enterprise software engineering patterns, including Domain-Driven Design (DDD), Hexagonal Architecture (Ports & Adapters), and CQRS command/query buses with pessimistic database locking for concurrency control.
+DriveAgency is a car subscription platform. The backend is built using Symfony 7, implementing a modular monolith structure with domain-driven design, ports and adapters, and CQRS patterns. The frontend is built using React 19, TypeScript, and Tailwind CSS.
 
----
+## Architecture
 
-## 🏗️ Architectural Overview
+* **Modular Monolith**: Business logic is separated into independent domain modules (Car, User, Subscription) inside the backend.
+* **CQRS**: Commands and queries are handled separately using the Symfony Messenger component.
+* **Concurrency Control**: Concurrency is managed at the database level using pessimistic write locks.
+* **Ports and Adapters**: Domain logic is decoupled from framework adapters using interface ports.
 
-The application is structured as a **Modular Monolith** located in the [src](file:///home/pawel/DriveAgency/backend/src) directory, separating distinct business domains while keeping them within a single repository for development velocity:
+## Tech Stack
 
-* **Domain-Driven Design (DDD)**: Business logic is encapsulated in Rich Domain Entities and Value Objects with guarded state transitions.
-* **Ports & Adapters (Hexagonal)**: High-level domain layers are isolated from low-level infrastructure dependencies (database adapters, HTTP controllers, CLI commands) using clear Interfaces (Ports).
-* **CQRS (Command Query Responsibility Segregation)**: Reads and writes are segregated into separate Command and Query paths using Symfony Messenger buses.
-* **Concurrency Control**: Booking collisions are prevented at the database layer using Doctrine pessimistic write locks (`LockMode::PESSIMISTIC_WRITE`) running inside transaction middleware.
+* **Backend**: PHP 8.3, Symfony 7.4, FrankenPHP, PostgreSQL, Redis
+* **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Zustand
 
----
-
-## 🚀 Tech Stack
-
-* **Core Framework**: PHP 8.3 + Symfony 7.4
-* **Application Server**: FrankenPHP 1.3 (Caddy-based worker mode)
-* **Database**: PostgreSQL 16
-* **Cache & Store**: Redis 7
-* **Testing**: PHPUnit 9
-
----
-
-## 🛠️ Getting Started
+## Setup
 
 ### Prerequisites
-* Docker and Docker Compose installed locally.
+* Docker and Docker Compose
 
-### Setup Instructions
+### Running the Project
 
-1. **Start Services**:
-   Spin up the application server, PostgreSQL, and Redis containers defined in [docker-compose.yaml](file:///home/pawel/DriveAgency/docker-compose.yaml):
+1. **Start the containers**:
    ```bash
    docker compose up -d --build
    ```
 
-2. **Generate JWT Keypairs**:
-   Generate the public and private key pairs required for lexik stateless JWT authentication:
+2. **Generate JWT keys**:
    ```bash
    docker compose exec php bin/console lexik:jwt:generate-keypair
    ```
 
-3. **Run Database Migrations**:
-   Run migration scripts to construct the database schema:
+3. **Run database migrations**:
    ```bash
    docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
    ```
 
-4. **Execute Tests**:
-   Run the test suite (unit, functional, integration, and parallel locking tests) inside the PHP container environment:
+4. **Run backend tests**:
    ```bash
    docker compose exec php bin/phpunit
    ```
+
+5. **Run the frontend**:
+   Navigate to the `frontend` directory and start the Vite development server:
+   ```bash
+   npm install
+   npm run dev
+   ```
+   The development server will be available at http://localhost:5173/.
