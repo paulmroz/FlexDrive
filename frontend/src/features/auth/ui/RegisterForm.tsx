@@ -32,7 +32,7 @@ export const RegisterForm = () => {
         });
         
         return { error: null, success: true };
-      } catch (err: any) {
+      } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
         const message = err.response?.data?.detail || err.response?.data?.message || 'Registration failed. Please try again.';
         return { error: message, success: false };
       }

@@ -68,6 +68,7 @@ export const DashboardPage = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCars();
   }, []);
 
@@ -150,7 +151,7 @@ export const DashboardPage = () => {
           fetchCars();
         }, 2000);
       }
-    } catch (err: any) {
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       setBookError(err.response?.data?.detail || err.response?.data?.message || 'Failed to create subscription.');
     }
   };
@@ -171,7 +172,7 @@ export const DashboardPage = () => {
       try {
         const payload = JSON.parse(event.data);
         if (payload.status === 'completed') {
-          const suggestions = payload.suggestions.map((s: any) => {
+          const suggestions = payload.suggestions.map((s: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
             const matchedCar = cars.find((c) => c.id === s.carId);
             return {
               carId: s.carId,

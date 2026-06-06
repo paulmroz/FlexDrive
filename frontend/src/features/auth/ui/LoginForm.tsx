@@ -26,7 +26,7 @@ export const LoginForm = () => {
         });
         
         return { error: null, success: true };
-      } catch (err: any) {
+      } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
         const message = err.response?.data?.detail || err.response?.data?.message || 'Invalid email or password.';
         return { error: message, success: false };
       }

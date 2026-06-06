@@ -7,36 +7,49 @@ interface UserState {
   roles: string[];
   isAuthenticated: boolean;
   isAdmin: boolean;
-  initialize: () => void;
   setAuth: (token: string) => void;
   clearAuth: () => void;
 }
 
-export const useUserStore = create<UserState>((set) => ({
-  token: null,
-  email: null,
-  roles: [],
-  isAuthenticated: false,
-  isAdmin: false,
+const getInitialState = () => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    return {
+      token: null,
+      email: null,
+      roles: [],
+      isAuthenticated: false,
+      isAdmin: false,
+    };
+  }
 
-  initialize: () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    const payload = decodeJwt(token);
-    if (!payload || payload.exp * 1000 < Date.now()) {
+  const payload = decodeJwt(token);
+  if (!payload || payload.exp * 1000 < Date.now()) {
+    if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
-      return;
     }
+    return {
+      token: null,
+      email: null,
+      roles: [],
+      isAuthenticated: false,
+      isAdmin: false,
+    };
+  }
 
-    set({
-      token,
-      email: payload.email,
-      roles: payload.roles,
-      isAuthenticated: true,
-      isAdmin: payload.roles.includes('ROLE_ADMIN'),
-    });
-  },
+  return {
+    token,
+    email: payload.email,
+    roles: payload.roles,
+    isAuthenticated: true,
+    isAdmin: payload.roles.includes('ROLE_ADMIN'),
+  };
+};
+
+const initialState = getInitialState();
+
+export const useUserStore = create<UserState>((set) => ({
+  ...initialState,
 
   setAuth: (token: string) => {
     localStorage.setItem('token', token);
@@ -64,3 +77,4 @@ export const useUserStore = create<UserState>((set) => ({
     });
   },
 }));
+

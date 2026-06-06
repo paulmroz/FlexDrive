@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useUserStore } from './entities/user/model/userStore';
 import { LoginPage } from './pages/LoginPage/LoginPage';
@@ -19,12 +18,6 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  const initialize = useUserStore((state) => state.initialize);
-
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
-
   return (
     <BrowserRouter>
       <Routes>
