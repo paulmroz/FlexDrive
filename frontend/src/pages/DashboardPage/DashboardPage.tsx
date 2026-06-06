@@ -4,7 +4,7 @@ import { useUserStore } from '../../entities/user/model/userStore';
 import { carApi, type Car } from '../../shared/api/carApi';
 import { subscriptionApi } from '../../shared/api/subscriptionApi';
 import { advisorApi } from '../../shared/api/advisorApi';
-import { Car as CarIcon, Bot, LogOut, Plus, Trash2, Edit2, Send, Loader2, Sparkles, Check, X, Calendar } from 'lucide-react';
+import { Car as CarIcon, Bot, LogOut, Plus, Trash2, Edit2, Send, Loader2, Sparkles, Check, X, Calendar, User } from 'lucide-react';
 
 interface ChatMessage {
   sender: 'user' | 'bot';

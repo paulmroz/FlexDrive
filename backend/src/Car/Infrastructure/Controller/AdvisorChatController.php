@@ -38,7 +38,9 @@ class AdvisorChatController extends AbstractController
     #[Route(path: '/api/cars/advisor/sse/{sessionId}', name: 'api_cars_advisor_sse', methods: ['GET'])]
     public function streamMessages(string $sessionId): StreamedResponse
     {
-        $response = new StreamedResponse(callback: function () use ($sessionId): void {
+        $response = new StreamedResponse(callbackOrChunks: function () use ($sessionId): void {
+            set_time_limit(seconds: 0);
+
             header(header: 'Content-Type: text/event-stream');
             header(header: 'Cache-Control: no-cache');
             header(header: 'Connection: keep-alive');
@@ -49,16 +51,20 @@ class AdvisorChatController extends AbstractController
             try {
                 $this->redis->subscribe(
                     channels: ['chat.' . $sessionId],
-                    callback: function (Redis $redis, string $channel, string $message): void {
+                    cb: function (Redis $redis, string $channel, string $message): void {
                         echo 'data: ' . $message . "\n\n";
-                        ob_flush();
+                        if (ob_get_level() > 0) {
+                            ob_flush();
+                        }
                         flush();
                         $redis->unsubscribe();
                     }
                 );
             } catch (RedisException $exception) {
                 echo "event: timeout\ndata: Connection timed out\n\n";
-                ob_flush();
+                if (ob_get_level() > 0) {
+                    ob_flush();
+                }
                 flush();
             }
         });

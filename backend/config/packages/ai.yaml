@@ -1,8 +1,17 @@
 ai:
     platform:
-        openai:
+        deepseek:
             api_key: '%env(DEEPSEEK_API_KEY)%'
             http_client: 'deepseek.client'
+
+    model:
+        deepseek:
+            deepseek-chat:
+                class: 'Symfony\AI\Platform\Bridge\DeepSeek\DeepSeek'
+                capabilities:
+                    - 'input-messages'
+                    - 'output-text'
+                    - 'output-structured'
 
     agent:
         # Agent configuration
@@ -10,6 +19,7 @@ ai:
 
         default:
             model: 'deepseek-chat'
+            platform: 'ai.platform.deepseek'
         #    prompt: |
         #        You are a pirate and you write funny.
         #    tools:

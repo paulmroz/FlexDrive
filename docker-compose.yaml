@@ -15,6 +15,20 @@ services:
       - db
       - redis
 
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/app
+    environment:
+      DATABASE_URL: "postgresql://app:password@db:5432/app?serverVersion=16&charset=utf8"
+      REDIS_URL: "redis://redis:6379"
+    command: php bin/console messenger:consume async -vv
+    depends_on:
+      - db
+      - redis
+
   db:
     image: postgres:16-alpine
     environment:

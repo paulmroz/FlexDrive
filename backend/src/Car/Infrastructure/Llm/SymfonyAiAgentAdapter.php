@@ -22,9 +22,9 @@ class SymfonyAiAgentAdapter implements AiAgentPortInterface
     {
         $context = json_encode(value: $availableCars);
 
-        $messages = new MessageBag([
-            Message::forSystem(content: 'Format recommendations strictly to match schema. Select from: ' . $context),
-            Message::ofUser(content: $prompt->getValue()),
+        $messages = new MessageBag(...[
+            Message::forSystem('Format recommendations strictly to match schema. Select from: ' . $context),
+            Message::ofUser($prompt->getValue()),
         ]);
 
         $result = $this->agent->call(
@@ -33,6 +33,10 @@ class SymfonyAiAgentAdapter implements AiAgentPortInterface
                 'response_format' => LlmAdvisorResponse::class,
             ]
         );
+
+        if (method_exists($result, 'getContent')) {
+            return $result->getContent();
+        }
 
         return $result->asObject();
     }
