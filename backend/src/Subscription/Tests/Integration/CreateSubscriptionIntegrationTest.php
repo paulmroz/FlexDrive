@@ -7,6 +7,8 @@ namespace App\Subscription\Tests\Integration;
 use App\Car\Domain\Entity\Car;
 use App\Car\Domain\ValueObject\CarId;
 use App\Subscription\Domain\Entity\Subscription;
+use App\Subscription\Domain\Gateway\PaymentGatewayClientInterface;
+use App\Subscription\Domain\Gateway\StripeCheckoutSessionDto;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -21,6 +23,7 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
     {
         parent::setUp();
         $this->client = static::createClient();
+        $this->client->disableReboot();
 
         $container = static::getContainer();
         $this->entityManager = $container->get(id: 'doctrine.orm.entity_manager');
@@ -29,6 +32,16 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
         $connection->executeStatement(sql: 'TRUNCATE TABLE "users" CASCADE');
         $connection->executeStatement(sql: 'TRUNCATE TABLE "cars" CASCADE');
         $connection->executeStatement(sql: 'TRUNCATE TABLE "subscriptions" CASCADE');
+
+        $paymentGatewayClientMock = $this->createMock(originalClassName: PaymentGatewayClientInterface::class);
+        $paymentGatewayClientMock->method('createCheckoutSession')->willReturnCallback(callback: function () {
+            $id = uniqid();
+            return new StripeCheckoutSessionDto(
+                sessionId: 'cs_test_mock_' . $id,
+                url: 'https://checkout.stripe.com/pay/cs_test_mock_' . $id
+            );
+        });
+        $container->set(id: PaymentGatewayClientInterface::class, service: $paymentGatewayClientMock);
     }
 
     public function testAnonymousAccessIsUnauthorized(): void
@@ -81,6 +94,9 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
             ])
         );
 
+        if (Response::HTTP_CREATED !== $this->client->getResponse()->getStatusCode()) {
+            fwrite(STDERR, $this->client->getResponse()->getContent() . "\n");
+        }
         $this->assertSame(
             expected: Response::HTTP_CREATED,
             actual: $this->client->getResponse()->getStatusCode()
@@ -125,6 +141,9 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
             ])
         );
 
+        if (Response::HTTP_CREATED !== $this->client->getResponse()->getStatusCode()) {
+            fwrite(STDERR, $this->client->getResponse()->getContent() . "\n");
+        }
         $this->assertSame(
             expected: Response::HTTP_CREATED,
             actual: $this->client->getResponse()->getStatusCode()
@@ -285,6 +304,158 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
         $data = json_decode(json: $responseContent, associative: true);
 
         return $data['token'];
+    }
 
+    public function testListUserSubscriptions(): void
+    {
+        $token = $this->getAuthToken(
+            email: 'list-user@example.com',
+            password: 'securepassword123'
+        );
+
+        // Fetch empty list
+        $this->client->request(
+            method: 'GET',
+            uri: '/api/subscriptions',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+            ]
+        );
+
+        $this->assertSame(
+            expected: Response::HTTP_OK,
+            actual: $this->client->getResponse()->getStatusCode()
+        );
+
+        $responseContent = $this->client->getResponse()->getContent();
+        $this->assertNotFalse($responseContent);
+        $data = json_decode(json: $responseContent, associative: true);
+        $this->assertCount(expectedCount: 0, haystack: $data);
+    }
+
+    public function testCancelSubscription(): void
+    {
+        $carId = CarId::generate();
+        $car = new Car(
+            id: $carId,
+            brand: 'Tesla',
+            model: 'Model Y',
+            pricePerDay: 3000,
+            available: true
+        );
+        $this->entityManager->persist($car);
+        $this->entityManager->flush();
+
+        $token = $this->getAuthToken(
+            email: 'cancel-user@example.com',
+            password: 'securepassword123'
+        );
+
+        // Create a subscription
+        $this->client->request(
+            method: 'POST',
+            uri: '/api/subscriptions',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+            ],
+            content: (string) json_encode(value: [
+                'carId' => $carId->getValue(),
+                'startDate' => '2026-06-01 12:00:00',
+                'endDate' => '2026-06-08 12:00:00',
+            ])
+        );
+
+        $responseContent = $this->client->getResponse()->getContent();
+        $this->assertNotFalse($responseContent);
+        $createdData = json_decode(json: $responseContent, associative: true);
+        $subscriptionId = $createdData['subscriptionId'];
+
+        // Cancel it
+        $this->client->request(
+            method: 'POST',
+            uri: '/api/subscriptions/' . $subscriptionId . '/cancel',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+            ]
+        );
+
+        $this->assertSame(
+            expected: Response::HTTP_OK,
+            actual: $this->client->getResponse()->getStatusCode()
+        );
+
+        $this->entityManager->clear();
+        $subscription = $this->entityManager
+            ->getRepository(Subscription::class)
+            ->find($subscriptionId);
+
+        $this->assertNotNull(actual: $subscription);
+        $this->assertSame(
+            expected: 'cancelled',
+            actual: $subscription->getStatus()->value
+        );
+    }
+
+    public function testCreateCheckoutSessionSuccessfully(): void
+    {
+        $carId = CarId::generate();
+        $car = new Car(
+            id: $carId,
+            brand: 'Tesla',
+            model: 'Model Y',
+            pricePerDay: 3000,
+            available: true
+        );
+        $this->entityManager->persist($car);
+        $this->entityManager->flush();
+
+        $token = $this->getAuthToken(
+            email: 'checkout-user@example.com',
+            password: 'securepassword123'
+        );
+
+        // Create subscription
+        $this->client->request(
+            method: 'POST',
+            uri: '/api/subscriptions',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+            ],
+            content: (string) json_encode(value: [
+                'carId' => $carId->getValue(),
+                'startDate' => '2026-06-01 12:00:00',
+                'endDate' => '2026-06-08 12:00:00',
+            ])
+        );
+
+        $responseContent = $this->client->getResponse()->getContent();
+        $this->assertNotFalse($responseContent);
+        $createdData = json_decode(json: $responseContent, associative: true);
+        $subscriptionId = $createdData['subscriptionId'];
+
+        // Request checkout session
+        $this->client->request(
+            method: 'POST',
+            uri: '/api/subscriptions/' . $subscriptionId . '/checkout',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+            ]
+        );
+
+        $this->assertSame(
+            expected: Response::HTTP_OK,
+            actual: $this->client->getResponse()->getStatusCode()
+        );
+
+        $checkoutResponseContent = $this->client->getResponse()->getContent();
+        $this->assertNotFalse($checkoutResponseContent);
+        $checkoutData = json_decode(json: $checkoutResponseContent, associative: true);
+        $this->assertArrayHasKey(key: 'paymentUrl', array: $checkoutData);
+        $this->assertStringContainsString(needle: 'stripe.com', haystack: $checkoutData['paymentUrl']);
     }
 }

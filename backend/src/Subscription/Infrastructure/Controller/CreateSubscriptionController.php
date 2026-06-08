@@ -13,24 +13,29 @@ use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Component\Uid\Uuid;
 use DateTimeImmutable;
 
-/**
- * @see CreateSubscriptionCommand
- */
 class CreateSubscriptionController extends AbstractController
 {
+    public function __construct(
+        private readonly MessageBusInterface $messageBus
+    ) {
+    }
+
     #[Route(path: '/api/subscriptions', name: 'api_create_subscription', methods: ['POST'])]
     public function __invoke(
         #[MapRequestPayload] CreateSubscriptionRequest $request,
-        #[CurrentUser] SecurityUser $securityUser,
-        MessageBusInterface $messageBus
+        #[CurrentUser] SecurityUser $securityUser
     ): JsonResponse {
         $user = $securityUser->getUser();
+        $subscriptionId = Uuid::v4()->toString();
+
         $startDate = new DateTimeImmutable(datetime: $request->startDate);
         $endDate = null !== $request->endDate ? new DateTimeImmutable(datetime: $request->endDate) : null;
 
-        $messageBus->dispatch(message: new CreateSubscriptionCommand(
+        $this->messageBus->dispatch(message: new CreateSubscriptionCommand(
+            subscriptionId: $subscriptionId,
             userId: $user->getId()->getValue(),
             carId: $request->carId,
             startDate: $startDate,
@@ -38,7 +43,9 @@ class CreateSubscriptionController extends AbstractController
         ));
 
         return new JsonResponse(
-            data: ['message' => 'Subscription created successfully.'],
+            data: [
+                'subscriptionId' => $subscriptionId
+            ],
             status: JsonResponse::HTTP_CREATED
         );
     }

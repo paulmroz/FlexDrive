@@ -20,4 +20,9 @@ interface SubscriptionRepositoryInterface
         DateTimeImmutable $startDate,
         ?DateTimeImmutable $endDate
     ): array;
+
+    /**
+     * @return array<Subscription>
+     */
+    public function findByUserId(string $userId): array;
 }

@@ -41,4 +41,20 @@ class CarApi implements CarApiInterface
             pricePerDay: $car->getPricePerDay()
         );
     }
+
+    public function getCarDetails(string $carId): CarDto
+    {
+        $car = $this->carRepository->findById(id: new CarId(value: $carId));
+
+        if (null === $car) {
+            throw new InvalidArgumentException(message: 'Car not found.');
+        }
+
+        return new CarDto(
+            id: $car->getId()->getValue(),
+            brand: $car->getBrand(),
+            model: $car->getModel(),
+            pricePerDay: $car->getPricePerDay()
+        );
+    }
 }

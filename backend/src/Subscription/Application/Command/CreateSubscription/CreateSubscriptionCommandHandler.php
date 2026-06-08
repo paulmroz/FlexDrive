@@ -40,7 +40,7 @@ class CreateSubscriptionCommandHandler
         }
 
         $subscription = new Subscription(
-            id: SubscriptionId::generate(),
+            id: new SubscriptionId(value: $command->subscriptionId),
             userId: new UserId(value: $command->userId),
             carId: $carId,
             startDate: $command->startDate,

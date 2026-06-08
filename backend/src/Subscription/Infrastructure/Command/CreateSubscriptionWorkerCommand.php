@@ -11,6 +11,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Uid\Uuid;
 use DateTimeImmutable;
 use Throwable;
 
@@ -54,6 +55,7 @@ class CreateSubscriptionWorkerCommand extends Command
 
         try {
             $this->messageBus->dispatch(message: new CreateSubscriptionCommand(
+                subscriptionId: Uuid::v4()->toString(),
                 userId: $userId,
                 carId: $carId,
                 startDate: $startDate,

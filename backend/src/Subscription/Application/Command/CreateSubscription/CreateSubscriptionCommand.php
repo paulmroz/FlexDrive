@@ -13,6 +13,7 @@ use DateTimeImmutable;
 class CreateSubscriptionCommand
 {
     public function __construct(
+        public readonly string $subscriptionId,
         public readonly string $userId,
         public readonly string $carId,
         public readonly DateTimeImmutable $startDate,

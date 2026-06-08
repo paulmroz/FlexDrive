@@ -2,7 +2,7 @@ import { useEffect, useState, startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserStore } from '../../entities/user/model/userStore';
 import { carApi, type Car } from '../../shared/api/carApi';
-import { subscriptionApi } from '../../shared/api/subscriptionApi';
+import { subscriptionApi, type SubscriptionResponse } from '../../shared/api/subscriptionApi';
 import { advisorApi } from '../../shared/api/advisorApi';
 import { Car as CarIcon, Bot, LogOut, Plus, Trash2, Edit2, Send, Loader2, Sparkles, Check, X, Calendar, User } from 'lucide-react';
 
@@ -21,8 +21,11 @@ export const DashboardPage = () => {
   const { email, isAdmin, clearAuth } = useUserStore();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<'fleet' | 'advisor'>('fleet');
+  const [activeTab, setActiveTab] = useState<'fleet' | 'advisor' | 'bookings'>('fleet');
   const [cars, setCars] = useState<Car[]>([]);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionResponse[]>([]);
+  const [isSubsLoading, setIsSubsLoading] = useState(false);
+  const [subsError, setSubsError] = useState<string | null>(null);
   const [isCarsLoading, setIsCarsLoading] = useState(true);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -79,6 +82,46 @@ export const DashboardPage = () => {
     });
   };
 
+  const fetchSubscriptions = async () => {
+    setIsSubsLoading(true);
+    setSubsError(null);
+    try {
+      const data = await subscriptionApi.list();
+      setSubscriptions(data);
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      setSubsError('Failed to load your bookings.');
+      console.error(err);
+    } finally {
+      setIsSubsLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async (id: string) => {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+    try {
+      await subscriptionApi.cancel(id);
+      fetchSubscriptions();
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      alert(err.response?.data?.detail || err.response?.data?.message || 'Failed to cancel booking.');
+    }
+  };
+
+  const handlePaySubscription = async (id: string) => {
+    try {
+      const checkoutResponse = await subscriptionApi.checkout(id);
+      window.location.href = checkoutResponse.paymentUrl;
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      alert(err.response?.data?.detail || err.response?.data?.message || 'Failed to initiate checkout.');
+    }
+  };
+
+  const handleTabChange = (tab: 'fleet' | 'advisor' | 'bookings') => {
+    setActiveTab(tab);
+    if (tab === 'bookings') {
+      fetchSubscriptions();
+    }
+  };
+
   const handleAddCar = async (e: React.SubmitEvent) => {
     e.preventDefault();
     try {
@@ -132,25 +175,19 @@ export const DashboardPage = () => {
     setBookSuccess(null);
 
     try {
-      const response = await subscriptionApi.create({
+      const formattedStartDate = startDate ? `${startDate} 00:00:00` : '';
+      const formattedEndDate = endDate ? `${endDate} 00:00:00` : null;
+
+      // Step 1: Create the subscription (fast, no Stripe call)
+      const createResponse = await subscriptionApi.create({
         carId: bookingCar.id,
-        startDate,
-        endDate: endDate || null,
+        startDate: formattedStartDate,
+        endDate: formattedEndDate,
       });
 
-      if (response.paymentUrl) {
-        window.location.href = response.paymentUrl;
-      } else {
-        setBookSuccess('Subscription created successfully!');
-        setTimeout(() => {
-          setIsBookModalOpen(false);
-          setBookingCar(null);
-          setStartDate('');
-          setEndDate('');
-          setBookSuccess(null);
-          fetchCars();
-        }, 2000);
-      }
+      // Step 2: Request Stripe checkout session and redirect
+      const checkoutResponse = await subscriptionApi.checkout(createResponse.subscriptionId);
+      window.location.href = checkoutResponse.paymentUrl;
     } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       setBookError(err.response?.data?.detail || err.response?.data?.message || 'Failed to create subscription.');
     }
@@ -256,7 +293,7 @@ export const DashboardPage = () => {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
         <div className="flex border-b border-slate-800">
           <button
-            onClick={() => setActiveTab('fleet')}
+            onClick={() => handleTabChange('fleet')}
             className={`flex items-center gap-2 px-6 py-4 border-b-2 font-medium text-sm transition-all ${
               activeTab === 'fleet'
                 ? 'border-violet-500 text-violet-400'
@@ -267,7 +304,7 @@ export const DashboardPage = () => {
             Browse Fleet
           </button>
           <button
-            onClick={() => setActiveTab('advisor')}
+            onClick={() => handleTabChange('advisor')}
             className={`flex items-center gap-2 px-6 py-4 border-b-2 font-medium text-sm transition-all ${
               activeTab === 'advisor'
                 ? 'border-violet-500 text-violet-400'
@@ -280,6 +317,17 @@ export const DashboardPage = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500"></span>
             </span>
+          </button>
+          <button
+            onClick={() => handleTabChange('bookings')}
+            className={`flex items-center gap-2 px-6 py-4 border-b-2 font-medium text-sm transition-all ${
+              activeTab === 'bookings'
+                ? 'border-violet-500 text-violet-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            My Bookings
           </button>
         </div>
 
@@ -517,6 +565,101 @@ export const DashboardPage = () => {
                 </li>
               </ul>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'bookings' && (
+          <div className="bg-slate-900/20 border border-slate-800 rounded-2xl p-6 shadow-2xl flex-1 flex flex-col gap-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white">My Bookings</h2>
+              <p className="text-sm text-slate-400">View and manage your active, pending, or cancelled subscriptions</p>
+            </div>
+
+            {isSubsLoading ? (
+              <div className="flex-1 flex flex-col items-center justify-center min-h-[300px] text-slate-400 gap-2">
+                <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+                <span>Loading your bookings...</span>
+              </div>
+            ) : subsError ? (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm rounded-xl">
+                {subsError}
+              </div>
+            ) : subscriptions.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center min-h-[300px] text-slate-400 gap-4 border border-dashed border-slate-800 rounded-xl p-8 bg-slate-950/20">
+                <Calendar className="w-12 h-12 text-slate-600" />
+                <div className="text-center">
+                  <h3 className="text-sm font-semibold text-white">No bookings found</h3>
+                  <p className="text-xs text-slate-500 mt-1">You haven't subscribed to any cars yet.</p>
+                </div>
+                <button
+                  onClick={() => handleTabChange('fleet')}
+                  className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-violet-500/15"
+                >
+                  Browse our fleet
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      <th className="pb-4 pt-2 px-4">Car</th>
+                      <th className="pb-4 pt-2 px-4">Start Date</th>
+                      <th className="pb-4 pt-2 px-4">End Date</th>
+                      <th className="pb-4 pt-2 px-4">Status</th>
+                      <th className="pb-4 pt-2 px-4">Created At</th>
+                      <th className="pb-4 pt-2 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50 text-sm text-slate-300">
+                    {subscriptions.map((sub) => (
+                      <tr key={sub.id} className="hover:bg-slate-900/10 transition-colors">
+                        <td className="py-4 px-4 font-semibold text-white">
+                          {sub.carBrand} {sub.carModel}
+                        </td>
+                        <td className="py-4 px-4">{sub.startDate}</td>
+                        <td className="py-4 px-4">{sub.endDate || 'Ongoing'}</td>
+                        <td className="py-4 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            sub.status === 'active'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : sub.status === 'pending_payment'
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : sub.status === 'cancelled'
+                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}>
+                            {sub.status === 'active' && 'Active'}
+                            {sub.status === 'pending_payment' && 'Pending Payment'}
+                            {sub.status === 'cancelled' && 'Cancelled'}
+                            {sub.status === 'expired' && 'Expired'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-xs text-slate-500">{sub.createdAt}</td>
+                        <td className="py-4 px-4 text-right">
+                          {sub.status === 'pending_payment' && (
+                            <button
+                              onClick={() => handlePaySubscription(sub.id)}
+                              className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-lg mr-2 transition-all shadow-md shadow-violet-500/10"
+                            >
+                              Pay Now
+                            </button>
+                          )}
+                          {(sub.status === 'active' || sub.status === 'pending_payment') && (
+                            <button
+                              onClick={() => handleCancelSubscription(sub.id)}
+                              className="px-3 py-1.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 text-xs font-semibold rounded-lg transition-all"
+                            >
+                              Cancel Booking
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </main>

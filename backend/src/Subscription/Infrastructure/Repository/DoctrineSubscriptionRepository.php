@@ -61,4 +61,12 @@ class DoctrineSubscriptionRepository extends ServiceEntityRepository implements 
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * @return array<Subscription>
+     */
+    public function findByUserId(string $userId): array
+    {
+        return $this->findBy(criteria: ['userId' => $userId]);
+    }
 }
