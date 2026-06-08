@@ -48,15 +48,27 @@ class AdvisorChatController extends AbstractController
 
             $this->redis->setOption(option: Redis::OPT_READ_TIMEOUT, value: 45);
 
+            $existingMessage = $this->redis->get(key: 'chat_result.' . $sessionId);
+            if ($existingMessage !== false) {
+                echo 'data: ' . $existingMessage . "\n\n";
+                if (ob_get_level() > 0) {
+                    ob_flush();
+                }
+                flush();
+                $this->redis->del(key: 'chat_result.' . $sessionId);
+                return;
+            }
+
             try {
                 $this->redis->subscribe(
                     channels: ['chat.' . $sessionId],
-                    cb: function (Redis $redis, string $channel, string $message): void {
+                    cb: function (Redis $redis, string $channel, string $message) use ($sessionId): void {
                         echo 'data: ' . $message . "\n\n";
                         if (ob_get_level() > 0) {
                             ob_flush();
                         }
                         flush();
+                        $redis->del(key: 'chat_result.' . $sessionId);
                         $redis->unsubscribe();
                     }
                 );

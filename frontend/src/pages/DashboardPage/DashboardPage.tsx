@@ -79,7 +79,7 @@ export const DashboardPage = () => {
     });
   };
 
-  const handleAddCar = async (e: React.FormEvent) => {
+  const handleAddCar = async (e: React.SubmitEvent) => {
     e.preventDefault();
     try {
       await carApi.add({
@@ -97,7 +97,7 @@ export const DashboardPage = () => {
     }
   };
 
-  const handleEditCar = async (e: React.FormEvent) => {
+  const handleEditCar = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!editingCar) return;
     try {
@@ -125,7 +125,7 @@ export const DashboardPage = () => {
     }
   };
 
-  const handleBookCar = async (e: React.FormEvent) => {
+  const handleBookCar = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!bookingCar) return;
     setBookError(null);
@@ -156,7 +156,7 @@ export const DashboardPage = () => {
     }
   };
 
-  const handleSendChatMessage = async (e: React.FormEvent) => {
+  const handleSendChatMessage = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || isAiLoading) return;
 
@@ -182,13 +182,15 @@ export const DashboardPage = () => {
             };
           });
 
+          const defaultContent = suggestions.length > 0
+            ? "Based on your vibes, here are my top recommendations from our fleet:"
+            : "I couldn't find any available cars matching your exact description, but please browse our fleet list to see other options!";
+
           setChatMessages((prev) => [
             ...prev,
             {
               sender: 'bot',
-              content: suggestions.length > 0
-                ? "Based on your vibes, here are my top recommendations from our fleet:"
-                : "I couldn't find any available cars matching your exact description, but please browse our fleet list to see other options!",
+              content: payload.message || defaultContent,
               suggestions,
             },
           ]);

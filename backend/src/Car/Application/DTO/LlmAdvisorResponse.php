@@ -12,7 +12,8 @@ class LlmAdvisorResponse
      * @param LlmCarSuggestion[] $suggestions
      */
     public function __construct(
-        public array $suggestions
+        public array $suggestions,
+        public ?string $message = null
     ) {
     }
 }

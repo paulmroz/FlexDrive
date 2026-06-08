@@ -62,7 +62,14 @@ class ProcessChatMessageCommandHandler
         $payload = json_encode(value: [
             'status' => 'completed',
             'suggestions' => $validSuggestions,
+            'message' => $response->message,
         ]);
+
+        $this->redis->setex(
+            key: 'chat_result.' . $sessionId,
+            expire: 300,
+            value: $payload
+        );
 
         $this->redis->publish(
             channel: 'chat.' . $sessionId,

@@ -40,6 +40,17 @@ class ProcessChatMessageCommandHandlerTest extends TestCase
 
         $redis = $this->createMock(Redis::class);
         $redis->expects($this->once())
+            ->method('setex')
+            ->with(...[
+                'chat_result.session123',
+                300,
+                $this->callback(callback: function (string $payload) use ($carId): bool {
+                    $data = json_decode(json: $payload, associative: true);
+                    return 'completed' === $data['status'] && $carId === $data['suggestions'][0]['carId'];
+                })
+            ]);
+
+        $redis->expects($this->once())
             ->method('publish')
             ->with(...[
                 'chat.session123',
