@@ -10,11 +10,13 @@ use App\Car\Application\DTO\LlmAdvisorResponse;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
+use Redis;
 
 class SymfonyAiAgentAdapter implements AiAgentPortInterface
 {
     public function __construct(
-        private AgentInterface $agent
+        private AgentInterface $agent,
+        private Redis $redis
     ) {
     }
 
@@ -30,10 +32,25 @@ class SymfonyAiAgentAdapter implements AiAgentPortInterface
             "3. ONLY recommend cars that are present in the provided list. Do not make up cars.\n" .
             "4. Your response must strictly match the output schema.";
 
-        $messages = new MessageBag(...[
-            Message::forSystem($systemPrompt),
-            Message::ofUser($prompt->getValue()),
-        ]);
+        $historyKey = 'chat_history.' . $sessionId;
+        $historyData = $this->redis->get(key: $historyKey);
+        $history = $historyData ? json_decode(json: $historyData, associative: true) : [];
+
+        $bagMessages = [
+            Message::forSystem(content: $systemPrompt)
+        ];
+
+        foreach ($history as $msg) {
+            if ($msg['role'] === 'user') {
+                $bagMessages[] = Message::ofUser($msg['content']);
+            } elseif ($msg['role'] === 'assistant') {
+                $bagMessages[] = Message::ofAssistant($msg['content']);
+            }
+        }
+
+        $bagMessages[] = Message::ofUser($prompt->getValue());
+
+        $messages = new MessageBag(...$bagMessages);
 
         $result = $this->agent->call(
             messages: $messages,
@@ -42,10 +59,28 @@ class SymfonyAiAgentAdapter implements AiAgentPortInterface
             ]
         );
 
-        if (method_exists($result, 'getContent')) {
-            return $result->getContent();
+        $responseObj = null;
+        if (method_exists(object_or_class: $result, method: 'getContent')) {
+            $responseObj = $result->getContent();
+        } else {
+            $responseObj = $result->asObject();
         }
 
-        return $result->asObject();
+        if ($responseObj instanceof LlmAdvisorResponse) {
+            $history[] = ['role' => 'user', 'content' => $prompt->getValue()];
+            $history[] = ['role' => 'assistant', 'content' => $responseObj->message];
+
+            if (count($history) > 20) {
+                $history = array_slice(array: $history, offset: -20);
+            }
+
+            $this->redis->setex(
+                key: $historyKey,
+                expire: 3600,
+                value: json_encode(value: $history)
+            );
+        }
+
+        return $responseObj;
     }
 }
