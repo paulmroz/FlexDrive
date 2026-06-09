@@ -27,7 +27,7 @@ class AdvisorChatController extends AbstractController
     #[Route(path: '/api/cars/advisor/chat/{sessionId}', name: 'api_cars_advisor_chat', methods: ['POST'])]
     public function submit(string $sessionId, #[MapRequestPayload] SubmitMessageRequest $request): JsonResponse
     {
-        $this->commandBus->dispatch(new ProcessChatMessageCommand(
+        $this->commandBus->dispatch(message: new ProcessChatMessageCommand(
             sessionId: $sessionId,
             messageContent: $request->message
         ));

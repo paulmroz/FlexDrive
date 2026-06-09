@@ -7,6 +7,7 @@ namespace App\Subscription\Application\Query\ListUserSubscriptions;
 use App\Car\Api\CarApiInterface;
 use App\Subscription\Domain\Repository\SubscriptionRepositoryInterface;
 use App\Subscription\Application\Query\ListUserSubscriptions\ListUserSubscriptionsQuery;
+use App\Subscription\Application\Query\ListUserSubscriptions\SubscriptionReadModel;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Throwable;
 
@@ -23,7 +24,7 @@ class ListUserSubscriptionsQueryHandler
     }
 
     /**
-     * @return array<array{id: string, carId: string, carBrand: string, carModel: string, status: string, startDate: string, endDate: ?string, createdAt: string}>
+     * @return SubscriptionReadModel[]
      */
     public function __invoke(ListUserSubscriptionsQuery $query): array
     {
@@ -43,18 +44,19 @@ class ListUserSubscriptionsQueryHandler
                 // Keep defaults if car not found
             }
 
-            $result[] = [
-                'id' => $subscription->getId()->getValue(),
-                'carId' => $carId,
-                'carBrand' => $carBrand,
-                'carModel' => $carModel,
-                'status' => $subscription->getStatus()->value,
-                'startDate' => $subscription->getStartDate()->format(format: 'Y-m-d H:i:s'),
-                'endDate' => null !== $subscription->getEndDate() ? $subscription->getEndDate()->format(format: 'Y-m-d H:i:s') : null,
-                'createdAt' => $subscription->getCreatedAt()->format(format: 'Y-m-d H:i:s'),
-            ];
+            $result[] = new SubscriptionReadModel(
+                id: $subscription->getId()->getValue(),
+                carId: $carId,
+                carBrand: $carBrand,
+                carModel: $carModel,
+                status: $subscription->getStatus()->value,
+                startDate: $subscription->getStartDate()->format(format: 'Y-m-d H:i:s'),
+                endDate: null !== $subscription->getEndDate() ? $subscription->getEndDate()->format(format: 'Y-m-d H:i:s') : null,
+                createdAt: $subscription->getCreatedAt()->format(format: 'Y-m-d H:i:s')
+            );
         }
 
         return $result;
     }
 }
+

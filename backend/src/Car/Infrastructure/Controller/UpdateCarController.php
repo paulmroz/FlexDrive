@@ -9,7 +9,6 @@ use App\Car\Infrastructure\Request\UpdateCarRequest;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
-use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -26,21 +25,13 @@ class UpdateCarController extends AbstractController
         #[MapRequestPayload] UpdateCarRequest $request,
         MessageBusInterface $messageBus
     ): JsonResponse {
-        try {
-            $messageBus->dispatch(message: new UpdateCarCommand(
-                id: $id,
-                brand: $request->brand,
-                model: $request->model,
-                pricePerDay: $request->pricePerDay,
-                available: $request->available
-            ));
-        } catch (HandlerFailedException $e) {
-            $originalException = $e->getPrevious() ?? $e;
-            return new JsonResponse(
-                data: ['error' => $originalException->getMessage()],
-                status: JsonResponse::HTTP_UNPROCESSABLE_ENTITY
-            );
-        }
+        $messageBus->dispatch(message: new UpdateCarCommand(
+            id: $id,
+            brand: $request->brand,
+            model: $request->model,
+            pricePerDay: $request->pricePerDay,
+            available: $request->available
+        ));
 
         return new JsonResponse(
             data: ['message' => 'Car updated successfully.'],
@@ -48,3 +39,4 @@ class UpdateCarController extends AbstractController
         );
     }
 }
+

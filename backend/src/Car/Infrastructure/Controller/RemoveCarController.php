@@ -7,7 +7,6 @@ namespace App\Car\Infrastructure\Controller;
 use App\Car\Application\Command\RemoveCar\RemoveCarCommand;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -23,15 +22,7 @@ class RemoveCarController extends AbstractController
         string $id,
         MessageBusInterface $messageBus
     ): JsonResponse {
-        try {
-            $messageBus->dispatch(message: new RemoveCarCommand(id: $id));
-        } catch (HandlerFailedException $e) {
-            $originalException = $e->getPrevious() ?? $e;
-            return new JsonResponse(
-                data: ['error' => $originalException->getMessage()],
-                status: JsonResponse::HTTP_UNPROCESSABLE_ENTITY
-            );
-        }
+        $messageBus->dispatch(message: new RemoveCarCommand(id: $id));
 
         return new JsonResponse(
             data: ['message' => 'Car removed successfully.'],
@@ -39,3 +30,4 @@ class RemoveCarController extends AbstractController
         );
     }
 }
+

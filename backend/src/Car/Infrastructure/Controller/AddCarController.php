@@ -9,7 +9,6 @@ use App\Car\Infrastructure\Request\AddCarRequest;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
-use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -25,19 +24,11 @@ class AddCarController extends AbstractController
         #[MapRequestPayload] AddCarRequest $request,
         MessageBusInterface $messageBus
     ): JsonResponse {
-        try {
-            $messageBus->dispatch(message: new AddCarCommand(
-                brand: $request->brand,
-                model: $request->model,
-                pricePerDay: $request->pricePerDay
-            ));
-        } catch (HandlerFailedException $e) {
-            $originalException = $e->getPrevious() ?? $e;
-            return new JsonResponse(
-                data: ['error' => $originalException->getMessage()],
-                status: JsonResponse::HTTP_UNPROCESSABLE_ENTITY
-            );
-        }
+        $messageBus->dispatch(message: new AddCarCommand(
+            brand: $request->brand,
+            model: $request->model,
+            pricePerDay: $request->pricePerDay
+        ));
 
         return new JsonResponse(
             data: ['message' => 'Car added successfully.'],
@@ -45,3 +36,4 @@ class AddCarController extends AbstractController
         );
     }
 }
+
