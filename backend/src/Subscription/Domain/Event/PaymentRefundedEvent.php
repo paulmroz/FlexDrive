@@ -6,7 +6,7 @@ namespace App\Subscription\Domain\Event;
 
 use App\Shared\Domain\Event\AuditableEventInterface;
 
-class PaymentCompletedEvent implements AuditableEventInterface
+class PaymentRefundedEvent implements AuditableEventInterface
 {
     public function __construct(
         public readonly string $paymentId,
@@ -16,7 +16,7 @@ class PaymentCompletedEvent implements AuditableEventInterface
 
     public function getEventType(): string
     {
-        return 'subscription.payment_completed';
+        return 'subscription.payment_refunded';
     }
 
     public function getAggregateId(): string

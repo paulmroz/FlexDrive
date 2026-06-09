@@ -32,6 +32,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Subscription/Domain/Entity'
                 prefix: 'App\Subscription\Domain\Entity'
                 alias: Subscription
+            AuditLog:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/AuditLog/Domain/Entity'
+                prefix: 'App\AuditLog\Domain\Entity'
+                alias: AuditLog
 
 
 when@test:

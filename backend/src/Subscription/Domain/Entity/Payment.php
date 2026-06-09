@@ -6,6 +6,10 @@ namespace App\Subscription\Domain\Entity;
 
 use App\Shared\Domain\AggregateRoot;
 use App\Subscription\Domain\Event\PaymentCompletedEvent;
+use App\Subscription\Domain\Event\PaymentConflictDetectedEvent;
+use App\Subscription\Domain\Event\PaymentDisputedEvent;
+use App\Subscription\Domain\Event\PaymentFailedEvent;
+use App\Subscription\Domain\Event\PaymentRefundedEvent;
 use App\Subscription\Domain\ValueObject\PaymentStatus;
 use Doctrine\ORM\Mapping as ORM;
 use DateTimeImmutable;
@@ -120,6 +124,11 @@ class Payment extends AggregateRoot
         }
 
         $this->status = PaymentStatus::FAILED;
+
+        $this->recordEvent(event: new PaymentFailedEvent(
+            paymentId: $this->id,
+            subscriptionId: $this->subscriptionId
+        ));
     }
 
     public function markAsRefunded(): void
@@ -129,6 +138,11 @@ class Payment extends AggregateRoot
         }
 
         $this->status = PaymentStatus::REFUNDED;
+
+        $this->recordEvent(event: new PaymentRefundedEvent(
+            paymentId: $this->id,
+            subscriptionId: $this->subscriptionId
+        ));
     }
 
     public function markAsDisputed(): void
@@ -138,6 +152,11 @@ class Payment extends AggregateRoot
         }
 
         $this->status = PaymentStatus::DISPUTED;
+
+        $this->recordEvent(event: new PaymentDisputedEvent(
+            paymentId: $this->id,
+            subscriptionId: $this->subscriptionId
+        ));
     }
 
     public function markAsConflict(): void
@@ -147,5 +166,10 @@ class Payment extends AggregateRoot
         }
 
         $this->status = PaymentStatus::PAID_CONFLICT;
+
+        $this->recordEvent(event: new PaymentConflictDetectedEvent(
+            paymentId: $this->id,
+            subscriptionId: $this->subscriptionId
+        ));
     }
 }

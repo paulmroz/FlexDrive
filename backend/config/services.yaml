@@ -46,3 +46,11 @@ services:
 
     Redis:
         alias: 'redis_client'
+
+    App\Shared\Infrastructure\EventListener\DomainEventListener:
+        arguments:
+            $eventBus: '@event.bus'
+
+    App\AuditLog\Infrastructure\Middleware\AuditLogMiddleware:
+        arguments:
+            $commandBus: '@command.bus'

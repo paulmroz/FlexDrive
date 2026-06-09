@@ -9,6 +9,11 @@ framework:
             query.bus:
                 middleware:
                     - validation
+            event.bus:
+                default_middleware:
+                    allow_no_handlers: true
+                middleware:
+                    - App\AuditLog\Infrastructure\Middleware\AuditLogMiddleware
 
         transports:
             # https://symfony.com/doc/current/messenger.html#transport-configuration
@@ -22,5 +27,6 @@ framework:
             # Route your messages to the transports
             # 'App\Message\YourMessage': async
             'App\Car\Application\Command\ProcessChatMessageCommand': async
+            'App\AuditLog\Application\Command\CreateAuditLog\CreateAuditLogCommand': async
 
         
