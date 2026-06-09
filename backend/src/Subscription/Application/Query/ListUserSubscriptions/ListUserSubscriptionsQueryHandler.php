@@ -29,6 +29,19 @@ class ListUserSubscriptionsQueryHandler
     public function __invoke(ListUserSubscriptionsQuery $query): array
     {
         $subscriptions = $this->subscriptionRepository->findByUserId(userId: $query->userId);
+
+        $carIds = array_map(
+            callback: fn($sub): string => $sub->getCarId()->getValue(),
+            array: $subscriptions
+        );
+
+        $carsMap = [];
+        try {
+            $carsMap = $this->carApi->getCarDetailsBatch(carIds: $carIds);
+        } catch (Throwable) {
+            // Fall back to empty map if API call fails
+        }
+
         $result = [];
 
         foreach ($subscriptions as $subscription) {
@@ -36,12 +49,10 @@ class ListUserSubscriptionsQueryHandler
             $carBrand = 'Unknown';
             $carModel = 'Car';
 
-            try {
-                $carDto = $this->carApi->getCarDetails(carId: $carId);
+            if (isset($carsMap[$carId])) {
+                $carDto = $carsMap[$carId];
                 $carBrand = $carDto->brand;
                 $carModel = $carDto->model;
-            } catch (Throwable) {
-                // Keep defaults if car not found
             }
 
             $result[] = new SubscriptionReadModel(

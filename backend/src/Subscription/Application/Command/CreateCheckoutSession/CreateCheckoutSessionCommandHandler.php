@@ -25,7 +25,9 @@ class CreateCheckoutSessionCommandHandler
         private readonly SubscriptionRepositoryInterface $subscriptionRepository,
         private readonly CarApiInterface $carApi,
         private readonly PaymentGatewayClientInterface $paymentGatewayClient,
-        private readonly PaymentRepositoryInterface $paymentRepository
+        private readonly PaymentRepositoryInterface $paymentRepository,
+        private readonly string $stripeSuccessUrl,
+        private readonly string $stripeCancelUrl
     ) {
     }
 
@@ -63,8 +65,8 @@ class CreateCheckoutSessionCommandHandler
             carBrandAndModel: $carDto->brand . ' ' . $carDto->model,
             amount: $amount,
             currency: 'usd',
-            successUrl: 'http://localhost:5173/dashboard',
-            cancelUrl: 'http://localhost:5173/dashboard'
+            successUrl: $this->stripeSuccessUrl,
+            cancelUrl: $this->stripeCancelUrl
         );
 
         $payment = new Payment(

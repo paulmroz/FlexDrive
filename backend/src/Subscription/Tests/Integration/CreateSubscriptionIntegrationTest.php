@@ -77,7 +77,7 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
 
         $token = $this->getAuthToken(
             email: 'user@example.com',
-            password: 'securepassword123'
+            password: 'SecureP@ssword123!'
         );
 
         $this->client->request(
@@ -154,7 +154,7 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
     {
         $token = $this->getAuthToken(
             email: 'user@example.com',
-            password: 'securepassword123'
+            password: 'SecureP@ssword123!'
         );
 
         $this->client->request(
@@ -198,7 +198,7 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
     {
         $token = $this->getAuthToken(
             email: 'user@example.com',
-            password: 'securepassword123'
+            password: 'SecureP@ssword123!'
         );
 
         $this->client->request(
@@ -247,7 +247,7 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
 
         $token = $this->getAuthToken(
             email: 'user@example.com',
-            password: 'securepassword123'
+            password: 'SecureP@ssword123!'
         );
 
         $this->client->request(
@@ -310,7 +310,7 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
     {
         $token = $this->getAuthToken(
             email: 'list-user@example.com',
-            password: 'securepassword123'
+            password: 'SecureP@ssword123!'
         );
 
         // Fetch empty list
@@ -349,7 +349,7 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
 
         $token = $this->getAuthToken(
             email: 'cancel-user@example.com',
-            password: 'securepassword123'
+            password: 'SecureP@ssword123!'
         );
 
         // Create a subscription
@@ -414,7 +414,7 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
 
         $token = $this->getAuthToken(
             email: 'checkout-user@example.com',
-            password: 'securepassword123'
+            password: 'SecureP@ssword123!'
         );
 
         // Create subscription

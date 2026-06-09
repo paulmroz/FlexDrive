@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Subscription\Application\Command\ConfirmPayment;
 
 use App\Subscription\Domain\Entity\ProcessedWebhook;
-use App\Subscription\Domain\Event\PaymentCompletedEvent;
 use App\Subscription\Domain\Gateway\PaymentGatewayClientInterface;
 use App\Subscription\Domain\Repository\PaymentRepositoryInterface;
 use App\Subscription\Domain\Repository\ProcessedWebhookRepositoryInterface;
@@ -14,9 +13,7 @@ use App\Subscription\Domain\ValueObject\PaymentStatus;
 use App\Subscription\Domain\ValueObject\SubscriptionId;
 use App\Subscription\Domain\ValueObject\SubscriptionStatus;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
-use Doctrine\DBAL\LockMode;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use DateTimeImmutable;
 use InvalidArgumentException;
@@ -28,8 +25,7 @@ class ConfirmPaymentCommandHandler
         private readonly PaymentRepositoryInterface $paymentRepository,
         private readonly ProcessedWebhookRepositoryInterface $processedWebhookRepository,
         private readonly SubscriptionRepositoryInterface $subscriptionRepository,
-        private readonly PaymentGatewayClientInterface $paymentGatewayClient,
-        private readonly MessageBusInterface $messageBus
+        private readonly PaymentGatewayClientInterface $paymentGatewayClient
     ) {
     }
 
@@ -50,10 +46,7 @@ class ConfirmPaymentCommandHandler
             return;
         }
 
-        $payment = $this->paymentRepository->findBySessionId(
-            sessionId: $command->sessionId,
-            lockMode: LockMode::PESSIMISTIC_WRITE
-        );
+        $payment = $this->paymentRepository->findBySessionIdWithWriteLock(sessionId: $command->sessionId);
 
         if (null === $payment) {
             throw new InvalidArgumentException(message: 'Payment session not found.');
@@ -85,11 +78,6 @@ class ConfirmPaymentCommandHandler
 
             $this->paymentRepository->save(payment: $payment);
             $this->subscriptionRepository->save(subscription: $subscription);
-
-            $this->messageBus->dispatch(message: new PaymentCompletedEvent(
-                paymentId: $payment->getId(),
-                subscriptionId: $payment->getSubscriptionId()
-            ));
         } elseif (SubscriptionStatus::CANCELLED === $subscription->getStatus()) {
             $overlapping = $this->subscriptionRepository->findOverlappingSubscriptions(
                 carId: $subscription->getCarId(),
@@ -103,11 +91,6 @@ class ConfirmPaymentCommandHandler
 
                 $this->paymentRepository->save(payment: $payment);
                 $this->subscriptionRepository->save(subscription: $subscription);
-
-                $this->messageBus->dispatch(message: new PaymentCompletedEvent(
-                    paymentId: $payment->getId(),
-                    subscriptionId: $payment->getSubscriptionId()
-                ));
             } else {
                 $payment->markAsConflict();
                 $this->paymentRepository->save(payment: $payment);

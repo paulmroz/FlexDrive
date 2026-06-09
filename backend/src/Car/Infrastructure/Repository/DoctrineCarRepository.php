@@ -8,6 +8,7 @@ use App\Car\Domain\Entity\Car;
 use App\Car\Domain\Repository\CarRepositoryInterface;
 use App\Car\Domain\ValueObject\CarId;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\LockMode;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -32,9 +33,25 @@ class DoctrineCarRepository extends ServiceEntityRepository implements CarReposi
         $this->getEntityManager()->flush();
     }
 
-    public function findById(CarId $id, ?int $lockMode = null): ?Car
+    public function findById(CarId $id): ?Car
     {
-        return $this->find(id: $id->getValue(), lockMode: $lockMode);
+        return $this->find(id: $id->getValue());
+    }
+
+    public function findByIdWithWriteLock(CarId $id): ?Car
+    {
+        return $this->find(id: $id->getValue(), lockMode: LockMode::PESSIMISTIC_WRITE);
+    }
+
+    /**
+     * @param CarId[] $ids
+     * @return Car[]
+     */
+    public function findByIds(array $ids): array
+    {
+        $rawIds = array_map(callback: fn(CarId $id): string => $id->getValue(), array: $ids);
+
+        return $this->findBy(criteria: ['id' => $rawIds]);
     }
 
     /**

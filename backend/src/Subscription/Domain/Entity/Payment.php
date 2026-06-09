@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Subscription\Domain\Entity;
 
+use App\Shared\Domain\AggregateRoot;
+use App\Subscription\Domain\Event\PaymentCompletedEvent;
 use App\Subscription\Domain\ValueObject\PaymentStatus;
 use Doctrine\ORM\Mapping as ORM;
 use DateTimeImmutable;
@@ -11,7 +13,7 @@ use DomainException;
 
 #[ORM\Entity]
 #[ORM\Table(name: '`payments`')]
-class Payment
+class Payment extends AggregateRoot
 {
     #[ORM\Id]
     #[ORM\Column(type: 'string', length: 36)]
@@ -104,6 +106,11 @@ class Payment
 
         $this->status = PaymentStatus::PAID;
         $this->paidAt = $paidAt;
+
+        $this->recordEvent(event: new PaymentCompletedEvent(
+            paymentId: $this->id,
+            subscriptionId: $this->subscriptionId
+        ));
     }
 
     public function markAsFailed(): void

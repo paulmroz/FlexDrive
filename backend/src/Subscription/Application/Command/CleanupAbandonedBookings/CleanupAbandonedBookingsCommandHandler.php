@@ -16,13 +16,14 @@ class CleanupAbandonedBookingsCommandHandler
 {
     public function __construct(
         private readonly PaymentRepositoryInterface $paymentRepository,
-        private readonly SubscriptionRepositoryInterface $subscriptionRepository
+        private readonly SubscriptionRepositoryInterface $subscriptionRepository,
+        private readonly string $cleanupThreshold
     ) {
     }
 
     public function __invoke(CleanupAbandonedBookingsCommand $command): void
     {
-        $threshold = new DateTimeImmutable(datetime: '-10 minutes');
+        $threshold = new DateTimeImmutable(datetime: $this->cleanupThreshold);
         $abandonedPayments = $this->paymentRepository->findCreatedOlderThan(threshold: $threshold);
 
         foreach ($abandonedPayments as $payment) {

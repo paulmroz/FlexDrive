@@ -67,7 +67,11 @@ class SymfonyAiAgentAdapterTest extends TestCase
                 })
             ]);
 
-        $adapter = new SymfonyAiAgentAdapter(agent: $agent, redis: $redis);
+        $adapter = new SymfonyAiAgentAdapter(
+            agent: $agent,
+            redis: $redis,
+            advisorSystemPrompt: 'Available cars: %s'
+        );
         $response = $adapter->getChatSuggestions(
             sessionId: $sessionId,
             prompt: new VibePrompt(value: 'I want a fast car'),

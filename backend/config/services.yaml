@@ -17,6 +17,10 @@ services:
             $environment: '%kernel.environment%'
             $webhookSecret: '%env(resolve:STRIPE_WEBHOOK_SECRET)%'
             $stripeSecretKey: '%env(resolve:STRIPE_SECRET_KEY)%'
+            $stripeSuccessUrl: '%env(STRIPE_SUCCESS_URL)%'
+            $stripeCancelUrl: '%env(STRIPE_CANCEL_URL)%'
+            $cleanupThreshold: '%env(CLEANUP_ABANDONED_THRESHOLD)%'
+            $advisorSystemPrompt: '%env(ADVISOR_SYSTEM_PROMPT)%'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name

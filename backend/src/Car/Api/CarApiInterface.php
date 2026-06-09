@@ -11,4 +11,10 @@ interface CarApiInterface
     public function lockAndValidateCar(string $carId): CarDto;
 
     public function getCarDetails(string $carId): CarDto;
+
+    /**
+     * @param string[] $carIds
+     * @return array<string, CarDto>
+     */
+    public function getCarDetailsBatch(array $carIds): array;
 }

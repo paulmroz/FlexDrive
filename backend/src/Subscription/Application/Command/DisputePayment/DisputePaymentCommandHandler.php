@@ -13,7 +13,6 @@ use App\Subscription\Domain\ValueObject\SubscriptionId;
 use App\Subscription\Domain\ValueObject\SubscriptionStatus;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
-use Doctrine\DBAL\LockMode;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use DateTimeImmutable;
 
@@ -47,15 +46,9 @@ class DisputePaymentCommandHandler
         $payment = null;
 
         if (null !== $command->paymentId) {
-            $payment = $this->paymentRepository->findById(
-                id: $command->paymentId,
-                lockMode: LockMode::PESSIMISTIC_WRITE
-            );
+            $payment = $this->paymentRepository->findByIdWithWriteLock(id: $command->paymentId);
         } elseif (null !== $command->sessionId) {
-            $payment = $this->paymentRepository->findBySessionId(
-                sessionId: $command->sessionId,
-                lockMode: LockMode::PESSIMISTIC_WRITE
-            );
+            $payment = $this->paymentRepository->findBySessionIdWithWriteLock(sessionId: $command->sessionId);
         }
 
         if (null === $payment) {

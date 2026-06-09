@@ -32,7 +32,7 @@ class RegisterUserAndLoginWorkflowTest extends WebTestCase
             server: ['CONTENT_TYPE' => 'application/json'],
             content: (string) json_encode(value: [
                 'email' => 'newuser@example.com',
-                'password' => 'securepassword123'
+                'password' => 'SecureP@ssword123!'
             ])
         );
 
@@ -75,7 +75,7 @@ class RegisterUserAndLoginWorkflowTest extends WebTestCase
     public function testRegisteredUserCanLoginAndObtainJwtToken(): void
     {
         $email = 'loginuser@example.com';
-        $password = 'securepassword123';
+        $password = 'SecureP@ssword123!';
 
         $this->client->request(
             method: 'POST',

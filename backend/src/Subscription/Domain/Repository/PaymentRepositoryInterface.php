@@ -11,9 +11,13 @@ interface PaymentRepositoryInterface
 {
     public function save(Payment $payment): void;
 
-    public function findById(string $id, ?int $lockMode = null): ?Payment;
+    public function findById(string $id): ?Payment;
 
-    public function findBySessionId(string $sessionId, ?int $lockMode = null): ?Payment;
+    public function findByIdWithWriteLock(string $id): ?Payment;
+
+    public function findBySessionId(string $sessionId): ?Payment;
+
+    public function findBySessionIdWithWriteLock(string $sessionId): ?Payment;
 
     /**
      * @return array<Payment>

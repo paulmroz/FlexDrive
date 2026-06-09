@@ -1,5 +1,6 @@
 import { useEffect, useState, startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { EventSourcePolyfill } from 'event-source-polyfill';
 import { useUserStore } from '../../entities/user/model/userStore';
 import { carApi, type Car } from '../../shared/api/carApi';
 import { subscriptionApi, type SubscriptionResponse } from '../../shared/api/subscriptionApi';
@@ -13,6 +14,15 @@ interface ChatMessage {
     carId: string;
     brand: string;
     model: string;
+    reason: string;
+  }>;
+}
+
+interface SseChatPayload {
+  status: 'completed' | 'timeout';
+  message?: string;
+  suggestions: Array<{
+    carId: string;
     reason: string;
   }>;
 }
@@ -109,7 +119,7 @@ export const DashboardPage = () => {
   const handlePaySubscription = async (id: string) => {
     try {
       const checkoutResponse = await subscriptionApi.checkout(id);
-      window.location.href = checkoutResponse.paymentUrl;
+      window.location.assign(checkoutResponse.paymentUrl);
     } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       alert(err.response?.data?.detail || err.response?.data?.message || 'Failed to initiate checkout.');
     }
@@ -203,13 +213,18 @@ export const DashboardPage = () => {
     setIsAiLoading(true);
 
     const sseUrl = advisorApi.getSseUrl(sessionId);
-    const eventSource = new EventSource(sseUrl);
+    const token = localStorage.getItem('token') || '';
+    const eventSource = new EventSourcePolyfill(sseUrl, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
 
     eventSource.onmessage = (event) => {
       try {
-        const payload = JSON.parse(event.data);
+        const payload = JSON.parse(event.data) as SseChatPayload;
         if (payload.status === 'completed') {
-          const suggestions = payload.suggestions.map((s: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+          const suggestions = payload.suggestions.map((s) => {
             const matchedCar = cars.find((c) => c.id === s.carId);
             return {
               carId: s.carId,

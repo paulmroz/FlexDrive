@@ -13,7 +13,15 @@ interface CarRepositoryInterface
 
     public function remove(Car $car): void;
 
-    public function findById(CarId $id, ?int $lockMode = null): ?Car;
+    public function findById(CarId $id): ?Car;
+
+    public function findByIdWithWriteLock(CarId $id): ?Car;
+
+    /**
+     * @param CarId[] $ids
+     * @return Car[]
+     */
+    public function findByIds(array $ids): array;
 
     /**
      * @return array<Car>

@@ -57,7 +57,7 @@ class CarCrudIntegrationTest extends WebTestCase
     public function testStandardUserAccessIsForbidden(): void
     {
         $email = 'user@example.com';
-        $password = 'securepassword123';
+        $password = 'SecureP@ssword123!';
 
         $this->client->request(
             method: 'POST',
@@ -119,7 +119,7 @@ class CarCrudIntegrationTest extends WebTestCase
         $this->entityManager->flush();
 
         $email = 'user2@example.com';
-        $password = 'securepassword123';
+        $password = 'SecureP@ssword123!';
 
         $this->client->request(
             method: 'POST',

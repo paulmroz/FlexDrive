@@ -8,8 +8,8 @@ use App\Car\Application\Command\ProcessChatMessageCommand;
 use App\Car\Application\Service\AiAgentPortInterface;
 use App\Car\Domain\Repository\CarRepositoryInterface;
 use App\Car\Domain\ValueObject\VibePrompt;
+use App\Car\Application\Service\ChatPublisherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Redis;
 
 #[AsMessageHandler]
 class ProcessChatMessageCommandHandler
@@ -17,7 +17,7 @@ class ProcessChatMessageCommandHandler
     public function __construct(
         private AiAgentPortInterface $aiAgent,
         private CarRepositoryInterface $carRepository,
-        private Redis $redis
+        private ChatPublisherInterface $chatPublisher
     ) {
     }
 
@@ -59,21 +59,10 @@ class ProcessChatMessageCommandHandler
             }
         }
 
-        $payload = json_encode(value: [
-            'status' => 'completed',
-            'suggestions' => $validSuggestions,
-            'message' => $response->message,
-        ]);
-
-        $this->redis->setex(
-            key: 'chat_result.' . $sessionId,
-            expire: 300,
-            value: $payload
-        );
-
-        $this->redis->publish(
-            channel: 'chat.' . $sessionId,
-            message: $payload
+        $this->chatPublisher->publish(
+            sessionId: $sessionId,
+            suggestions: $validSuggestions,
+            message: $response->message
         );
     }
 }

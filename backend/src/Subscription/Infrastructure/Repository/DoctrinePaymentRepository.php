@@ -8,6 +8,7 @@ use App\Subscription\Domain\Entity\Payment;
 use App\Subscription\Domain\Repository\PaymentRepositoryInterface;
 use App\Subscription\Domain\ValueObject\PaymentStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\LockMode;
 use Doctrine\Persistence\ManagerRegistry;
 use DateTimeImmutable;
 
@@ -27,21 +28,33 @@ class DoctrinePaymentRepository extends ServiceEntityRepository implements Payme
         $this->getEntityManager()->flush();
     }
 
-    public function findById(string $id, ?int $lockMode = null): ?Payment
+    public function findById(string $id): ?Payment
     {
-        return $this->find(id: $id, lockMode: $lockMode);
+        return $this->find(id: $id);
     }
 
-    public function findBySessionId(string $sessionId, ?int $lockMode = null): ?Payment
+    public function findByIdWithWriteLock(string $id): ?Payment
+    {
+        return $this->find(id: $id, lockMode: LockMode::PESSIMISTIC_WRITE);
+    }
+
+    public function findBySessionId(string $sessionId): ?Payment
+    {
+        return $this->createQueryBuilder(alias: 'p')
+            ->where('p.sessionId = :sessionId')
+            ->setParameter(key: 'sessionId', value: $sessionId)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    public function findBySessionIdWithWriteLock(string $sessionId): ?Payment
     {
         $query = $this->createQueryBuilder(alias: 'p')
             ->where('p.sessionId = :sessionId')
             ->setParameter(key: 'sessionId', value: $sessionId)
             ->getQuery();
 
-        if (null !== $lockMode) {
-            $query->setLockMode(lockMode: $lockMode);
-        }
+        $query->setLockMode(lockMode: LockMode::PESSIMISTIC_WRITE);
 
         return $query->getOneOrNullResult();
     }

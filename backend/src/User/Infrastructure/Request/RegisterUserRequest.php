@@ -17,6 +17,22 @@ class RegisterUserRequest
             min: 8,
             minMessage: 'Password must be at least 8 characters long.'
         )]
+        #[Assert\Regex(
+            pattern: '/[a-z]/',
+            message: 'Password must contain at least one lowercase letter.'
+        )]
+        #[Assert\Regex(
+            pattern: '/[A-Z]/',
+            message: 'Password must contain at least one uppercase letter.'
+        )]
+        #[Assert\Regex(
+            pattern: '/[0-9]/',
+            message: 'Password must contain at least one number.'
+        )]
+        #[Assert\Regex(
+            pattern: '/[\W_]/',
+            message: 'Password must contain at least one special character.'
+        )]
         public readonly string $password
     ) {
     }
