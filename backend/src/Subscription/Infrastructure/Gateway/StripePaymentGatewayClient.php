@@ -14,7 +14,9 @@ class StripePaymentGatewayClient implements PaymentGatewayClientInterface
 {
     public function __construct(
         private readonly HttpClientInterface $httpClient,
-        private readonly string $stripeSecretKey
+        private readonly string $stripeSecretKey,
+        private readonly string $stripeSuccessUrl,
+        private readonly string $stripeCancelUrl
     ) {
     }
 
@@ -40,9 +42,7 @@ class StripePaymentGatewayClient implements PaymentGatewayClientInterface
         string $subscriptionId,
         string $carBrandAndModel,
         int $amount,
-        string $currency,
-        string $successUrl,
-        string $cancelUrl
+        string $currency
     ): StripeCheckoutSessionDto {
         $response = $this->httpClient->request(
             method: 'POST',
@@ -50,8 +50,8 @@ class StripePaymentGatewayClient implements PaymentGatewayClientInterface
             options: [
                 'auth_bearer' => $this->stripeSecretKey,
                 'body' => [
-                    'success_url' => $successUrl,
-                    'cancel_url' => $cancelUrl,
+                    'success_url' => $this->stripeSuccessUrl,
+                    'cancel_url' => $this->stripeCancelUrl,
                     'mode' => 'payment',
                     'line_items[0][price_data][currency]' => $currency,
                     'line_items[0][price_data][product_data][name]' => $carBrandAndModel,

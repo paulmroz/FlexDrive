@@ -8,6 +8,7 @@ use App\Subscription\Domain\Repository\PaymentRepositoryInterface;
 use App\Subscription\Domain\Repository\SubscriptionRepositoryInterface;
 use App\Subscription\Domain\ValueObject\SubscriptionId;
 use App\Subscription\Domain\ValueObject\SubscriptionStatus;
+use App\Subscription\Domain\Transition\FailTransition;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use DateTimeImmutable;
 
@@ -35,7 +36,7 @@ class CleanupAbandonedBookingsCommandHandler
             );
 
             if (null !== $subscription && SubscriptionStatus::PENDING_PAYMENT === $subscription->getStatus()) {
-                $subscription->cancel(cancelledAt: new DateTimeImmutable());
+                $subscription->applyTransition(transition: new FailTransition(failedAt: new DateTimeImmutable()));
                 $this->subscriptionRepository->save(subscription: $subscription);
             }
         }

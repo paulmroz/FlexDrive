@@ -90,31 +90,15 @@ class Subscription
         return $this->createdAt;
     }
 
-    public function activate(): void
+    public function applyTransition(\App\Subscription\Domain\Transition\SubscriptionTransitionInterface $transition): void
     {
-        if (SubscriptionStatus::PENDING_PAYMENT !== $this->status) {
-            throw new DomainException(message: 'Only pending subscriptions can be activated.');
-        }
+        $mutator = function(SubscriptionStatus $newStatus, ?DateTimeImmutable $endDate = null): void {
+            $this->status = $newStatus;
+            if (null !== $endDate) {
+                $this->endDate = $endDate;
+            }
+        };
 
-        $this->status = SubscriptionStatus::ACTIVE;
-    }
-
-    public function cancel(DateTimeImmutable $cancelledAt): void
-    {
-        if (SubscriptionStatus::CANCELLED === $this->status || SubscriptionStatus::EXPIRED === $this->status) {
-            throw new DomainException(message: 'Subscription is already ended and cannot be cancelled.');
-        }
-
-        $this->status = SubscriptionStatus::CANCELLED;
-        $this->endDate = $cancelledAt;
-    }
-
-    public function reactivate(): void
-    {
-        if (SubscriptionStatus::CANCELLED !== $this->status) {
-            throw new DomainException(message: 'Only cancelled subscriptions can be reactivated.');
-        }
-
-        $this->status = SubscriptionStatus::ACTIVE;
+        $transition->apply(subscription: $this, mutator: $mutator);
     }
 }

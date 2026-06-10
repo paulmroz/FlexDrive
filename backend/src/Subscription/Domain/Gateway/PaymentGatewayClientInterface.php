@@ -14,8 +14,6 @@ interface PaymentGatewayClientInterface
         string $subscriptionId,
         string $carBrandAndModel,
         int $amount,
-        string $currency,
-        string $successUrl,
-        string $cancelUrl
+        string $currency
     ): StripeCheckoutSessionDto;
 }

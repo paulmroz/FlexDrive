@@ -6,6 +6,7 @@ namespace App\Subscription\Application\Command\CancelSubscription;
 
 use App\Subscription\Domain\Repository\SubscriptionRepositoryInterface;
 use App\Subscription\Domain\ValueObject\SubscriptionId;
+use App\Subscription\Domain\Transition\CancelTransition;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use InvalidArgumentException;
 use DomainException;
@@ -35,7 +36,7 @@ class CancelSubscriptionCommandHandler
             throw new DomainException(message: 'You are not authorized to cancel this subscription.');
         }
 
-        $subscription->cancel(cancelledAt: new DateTimeImmutable());
+        $subscription->applyTransition(transition: new CancelTransition(cancelledAt: new DateTimeImmutable()));
 
         $this->subscriptionRepository->save(subscription: $subscription);
     }

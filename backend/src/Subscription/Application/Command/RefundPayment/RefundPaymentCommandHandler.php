@@ -15,6 +15,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use DateTimeImmutable;
+use App\Subscription\Domain\Transition\CancelTransition;
 
 #[AsMessageHandler]
 class RefundPaymentCommandHandler
@@ -67,7 +68,7 @@ class RefundPaymentCommandHandler
         );
 
         if (null !== $subscription && SubscriptionStatus::CANCELLED !== $subscription->getStatus()) {
-            $subscription->cancel(cancelledAt: new DateTimeImmutable());
+            $subscription->applyTransition(transition: new CancelTransition(cancelledAt: new DateTimeImmutable()));
             $this->subscriptionRepository->save(subscription: $subscription);
         }
     }

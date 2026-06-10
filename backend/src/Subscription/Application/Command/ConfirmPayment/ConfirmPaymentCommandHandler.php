@@ -12,6 +12,8 @@ use App\Subscription\Domain\Repository\SubscriptionRepositoryInterface;
 use App\Subscription\Domain\ValueObject\PaymentStatus;
 use App\Subscription\Domain\ValueObject\SubscriptionId;
 use App\Subscription\Domain\ValueObject\SubscriptionStatus;
+use App\Subscription\Domain\Transition\ActivateTransition;
+use App\Subscription\Domain\Transition\ReactivateTransition;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -74,7 +76,7 @@ class ConfirmPaymentCommandHandler
 
         if (SubscriptionStatus::PENDING_PAYMENT === $subscription->getStatus()) {
             $payment->markAsPaid(paidAt: new DateTimeImmutable());
-            $subscription->activate();
+            $subscription->applyTransition(transition: new ActivateTransition());
 
             $this->paymentRepository->save(payment: $payment);
             $this->subscriptionRepository->save(subscription: $subscription);
@@ -87,7 +89,7 @@ class ConfirmPaymentCommandHandler
 
             if ([] === $overlapping) {
                 $payment->markAsPaid(paidAt: new DateTimeImmutable());
-                $subscription->reactivate();
+                $subscription->applyTransition(transition: new ReactivateTransition());
 
                 $this->paymentRepository->save(payment: $payment);
                 $this->subscriptionRepository->save(subscription: $subscription);
