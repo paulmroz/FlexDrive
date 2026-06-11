@@ -69,5 +69,58 @@ class DoctrineCarRepository extends ServiceEntityRepository implements CarReposi
     {
         return $this->findBy(criteria: ['available' => true]);
     }
+
+    /**
+     * @return array<Car>
+     */
+    public function findAvailableCarsByCriteria(?string $brand = null, ?string $model = null, ?int $maxPricePerDay = null, ?int $minPricePerDay = null): array
+    {
+        $qb = $this->createQueryBuilder(alias: 'c')
+            ->andWhere('c.available = :available')
+            ->setParameter('available', true);
+
+        if (null !== $brand) {
+            $qb->andWhere('LOWER(c.brand) LIKE :brand')
+               ->setParameter('brand', '%' . strtolower(string: $brand) . '%');
+        }
+
+        if (null !== $model) {
+            $qb->andWhere('LOWER(c.model) LIKE :model')
+               ->setParameter('model', '%' . strtolower(string: $model) . '%');
+        }
+
+        if (null !== $maxPricePerDay) {
+            $qb->andWhere('c.pricePerDay <= :maxPrice')
+               ->setParameter('maxPrice', $maxPricePerDay);
+        }
+
+        if (null !== $minPricePerDay) {
+            $qb->andWhere('c.pricePerDay >= :minPrice')
+               ->setParameter('minPrice', $minPricePerDay);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * @return array<Car>
+     */
+    public function findFallbackCars(?int $maxPricePerDay = null, int $limit = 5): array
+    {
+        $qb = $this->createQueryBuilder(alias: 'c')
+            ->andWhere('c.available = :available')
+            ->setParameter('available', true);
+
+        if (null !== $maxPricePerDay) {
+            // Give preference to cars around this budget, but ignore brand/model.
+            // A simple approach is just enforcing the price or finding cheapest.
+            $qb->andWhere('c.pricePerDay <= :maxPrice')
+               ->setParameter('maxPrice', $maxPricePerDay + 20); // slightly loose fallback
+        }
+
+        $qb->setMaxResults($limit);
+
+        return $qb->getQuery()->getResult();
+    }
 }
 

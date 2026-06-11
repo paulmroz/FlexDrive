@@ -7,6 +7,7 @@ namespace App\Car\Infrastructure\Llm;
 use App\Car\Application\Service\AiAgentPortInterface;
 use App\Car\Domain\ValueObject\VibePrompt;
 use App\Car\Application\DTO\LlmAdvisorResponse;
+use App\Car\Application\DTO\LlmCarSearchCriteria;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
@@ -17,13 +18,41 @@ class SymfonyAiAgentAdapter implements AiAgentPortInterface
     public function __construct(
         private AgentInterface $agent,
         private Redis $redis,
-        private string $advisorSystemPrompt
+        private string $advisorSystemPrompt,
+        private string $extractorSystemPrompt
     ) {
     }
 
-    public function getChatSuggestions(string $sessionId, VibePrompt $prompt, array $availableCars): LlmAdvisorResponse
+    public function extractCriteria(VibePrompt $prompt): LlmCarSearchCriteria
     {
-        $context = json_encode(value: $availableCars);
+        $messages = new MessageBag(
+            Message::forSystem(content: $this->extractorSystemPrompt),
+            Message::ofUser($prompt->getValue())
+        );
+
+        $result = $this->agent->call(
+            messages: $messages,
+            options: [
+                'response_format' => LlmCarSearchCriteria::class,
+            ]
+        );
+
+        if (method_exists(object_or_class: $result, method: 'getContent')) {
+            $responseObj = $result->getContent();
+        } else {
+            $responseObj = $result->asObject();
+        }
+
+        if ($responseObj instanceof LlmCarSearchCriteria) {
+            return $responseObj;
+        }
+
+        return new LlmCarSearchCriteria();
+    }
+
+    public function getChatSuggestions(string $sessionId, VibePrompt $prompt, array $candidateCars): LlmAdvisorResponse
+    {
+        $context = json_encode(value: $candidateCars);
         $systemPrompt = sprintf($this->advisorSystemPrompt, $context);
 
         $historyKey = 'chat_history.' . $sessionId;

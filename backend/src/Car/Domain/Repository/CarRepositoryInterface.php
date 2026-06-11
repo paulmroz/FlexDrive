@@ -32,5 +32,15 @@ interface CarRepositoryInterface
      * @return array<Car>
      */
     public function findAvailableCars(): array;
+
+    /**
+     * @return array<Car>
+     */
+    public function findAvailableCarsByCriteria(?string $brand = null, ?string $model = null, ?int $maxPricePerDay = null, ?int $minPricePerDay = null): array;
+
+    /**
+     * @return array<Car>
+     */
+    public function findFallbackCars(?int $maxPricePerDay = null, int $limit = 5): array;
 }
 
