@@ -10,6 +10,7 @@ use App\Car\Application\Service\AiAgentPortInterface;
 use App\Car\Application\Service\ChatPublisherInterface;
 use App\Car\Domain\Repository\CarRepositoryInterface;
 use App\Car\Application\DTO\LlmAdvisorResponse;
+use App\Car\Application\DTO\LlmCarSearchCriteria;
 use App\Car\Application\DTO\LlmCarSuggestion;
 use App\Car\Domain\Entity\Car;
 use App\Car\Domain\ValueObject\CarId;
@@ -29,13 +30,14 @@ class ProcessChatMessageCommandHandlerTest extends TestCase
         );
 
         $repository = $this->createMock(CarRepositoryInterface::class);
-        $repository->method('findAvailableCars')->willReturn([$car]);
+        $repository->method('findAvailableCarsByCriteria')->willReturn([$car]);
 
         $aiResponse = new LlmAdvisorResponse(suggestions: [
             new LlmCarSuggestion(carId: $carId, reason: 'matches electric preference'),
         ]);
 
         $port = $this->createMock(AiAgentPortInterface::class);
+        $port->method('extractCriteria')->willReturn(new LlmCarSearchCriteria());
         $port->method('getChatSuggestions')->willReturn($aiResponse);
 
         $publisher = $this->createMock(originalClassName: ChatPublisherInterface::class);
@@ -44,7 +46,7 @@ class ProcessChatMessageCommandHandlerTest extends TestCase
             ->with(...[
                 'session123',
                 [['carId' => $carId, 'reason' => 'matches electric preference']],
-                null
+                'Here are some cars you might like.'
             ]);
 
         $handler = new ProcessChatMessageCommandHandler(

@@ -18,9 +18,9 @@ class SubscriptionTransitionTest extends TestCase
     public function testApplyTransitionCorrectlyMutatesStatus(): void
     {
         $subscription = new Subscription(
-            id: new SubscriptionId(value: 'sub-1'),
-            userId: new UserId(value: 'user-1'),
-            carId: new CarId(value: 'car-1'),
+            id: SubscriptionId::generate(),
+            userId: UserId::generate(),
+            carId: CarId::generate(),
             startDate: new DateTimeImmutable(),
             endDate: null,
             status: SubscriptionStatus::PENDING_PAYMENT

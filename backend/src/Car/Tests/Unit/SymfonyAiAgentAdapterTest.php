@@ -25,7 +25,6 @@ class SymfonyAiAgentAdapterTest extends TestCase
         $sessionId = 'test-session-123';
         $historyKey = 'chat_history.' . $sessionId;
 
-        // Mock Redis containing one user/assistant turn
         $redis->expects($this->once())
             ->method('get')
             ->with($historyKey)
@@ -51,7 +50,6 @@ class SymfonyAiAgentAdapterTest extends TestCase
             )
             ->willReturn(value: $mockLlmResult);
 
-        // Verify Redis saves the updated history containing the new turn
         $redis->expects($this->once())
             ->method('setex')
             ->with(...[
@@ -70,12 +68,13 @@ class SymfonyAiAgentAdapterTest extends TestCase
         $adapter = new SymfonyAiAgentAdapter(
             agent: $agent,
             redis: $redis,
-            advisorSystemPrompt: 'Available cars: %s'
+            advisorSystemPrompt: 'Available cars: %s',
+            extractorSystemPrompt: 'Extract search criteria'
         );
         $response = $adapter->getChatSuggestions(
             sessionId: $sessionId,
             prompt: new VibePrompt(value: 'I want a fast car'),
-            availableCars: []
+            candidateCars: []
         );
 
         $this->assertSame(expected: $mockLlmResultObj, actual: $response);

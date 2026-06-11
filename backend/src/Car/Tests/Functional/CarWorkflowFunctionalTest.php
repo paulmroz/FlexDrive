@@ -28,7 +28,7 @@ class CarWorkflowFunctionalTest extends KernelTestCase
         self::bootKernel();
 
         $container = self::getContainer();
-        $this->carRepository = $container->get(id: 'App\Car\Domain\Repository\CarRepositoryInterface');
+        $this->carRepository = $container->get(id: CarRepositoryInterface::class);
         $this->addHandler = $container->get(id: AddCarCommandHandler::class);
         $this->updateHandler = $container->get(id: UpdateCarCommandHandler::class);
         $this->removeHandler = $container->get(id: RemoveCarCommandHandler::class);

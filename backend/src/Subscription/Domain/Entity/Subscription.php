@@ -10,7 +10,7 @@ use App\Subscription\Domain\ValueObject\SubscriptionId;
 use App\Subscription\Domain\ValueObject\SubscriptionStatus;
 use Doctrine\ORM\Mapping as ORM;
 use DateTimeImmutable;
-use DomainException;
+use App\Subscription\Domain\Transition\SubscriptionTransitionInterface;
 
 #[ORM\Entity]
 #[ORM\Table(name: '`subscriptions`')]
@@ -90,7 +90,7 @@ class Subscription
         return $this->createdAt;
     }
 
-    public function applyTransition(\App\Subscription\Domain\Transition\SubscriptionTransitionInterface $transition): void
+    public function applyTransition(SubscriptionTransitionInterface $transition): void
     {
         $mutator = function(SubscriptionStatus $newStatus, ?DateTimeImmutable $endDate = null): void {
             $this->status = $newStatus;

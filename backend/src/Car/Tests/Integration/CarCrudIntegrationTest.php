@@ -6,6 +6,7 @@ namespace App\Car\Tests\Integration;
 
 use App\Car\Domain\Entity\Car;
 use App\Car\Domain\ValueObject\CarId;
+use App\Car\Domain\Repository\CarRepositoryInterface;
 use App\Shared\Domain\ValueObject\Email;
 use App\Shared\Domain\ValueObject\UserId;
 use App\User\Domain\Entity\User;
@@ -106,7 +107,6 @@ class CarCrudIntegrationTest extends WebTestCase
 
     public function testStandardUserCannotUpdateOrRemoveCar(): void
     {
-        // Create a car in database
         $carId = CarId::generate();
         $car = new Car(
             id: $carId,
@@ -247,7 +247,7 @@ class CarCrudIntegrationTest extends WebTestCase
             $this->client->getResponse()->getStatusCode()
         );
 
-        $carsRepository = $container->get(id: 'App\Car\Domain\Repository\CarRepositoryInterface');
+        $carsRepository = $container->get(id: CarRepositoryInterface::class);
         $cars = $carsRepository->findAllCars();
         $this->assertCount(1, $cars);
         $car = $cars[0];

@@ -10,16 +10,15 @@ use App\AuditLog\Application\Command\CreateAuditLog\CreateAuditLogCommand;
 use App\AuditLog\Application\Query\GetAuditLogs\GetAuditLogsQuery;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Messenger\MessageBusInterface;
 use DateTimeImmutable;
 use Symfony\Component\Uid\Uuid;
+use App\AuditLog\Application\Command\CreateAuditLog\CreateAuditLogCommandHandler;
+use App\AuditLog\Application\Query\GetAuditLogs\GetAuditLogsQueryHandler;
 
 class AuditLogIntegrationTest extends KernelTestCase
 {
     private EntityManagerInterface $entityManager;
     private AuditLogRepositoryInterface $auditLogRepository;
-    private MessageBusInterface $commandBus;
-    private MessageBusInterface $queryBus;
 
     protected function setUp(): void
     {
@@ -29,8 +28,6 @@ class AuditLogIntegrationTest extends KernelTestCase
         $container = self::getContainer();
         $this->entityManager = $container->get(id: 'doctrine.orm.entity_manager');
         $this->auditLogRepository = $container->get(id: AuditLogRepositoryInterface::class);
-        $this->commandBus = $container->get(id: 'command.bus');
-        $this->queryBus = $container->get(id: 'query.bus');
 
         $connection = $this->entityManager->getConnection();
         $connection->executeStatement(sql: 'TRUNCATE TABLE audit_logs CASCADE');
@@ -81,7 +78,7 @@ class AuditLogIntegrationTest extends KernelTestCase
             occurredAt: $occurredAt
         );
 
-        $handler = self::getContainer()->get(id: \App\AuditLog\Application\Command\CreateAuditLog\CreateAuditLogCommandHandler::class);
+        $handler = self::getContainer()->get(id: CreateAuditLogCommandHandler::class);
         $handler(command: $command);
 
         $this->entityManager->clear();
@@ -91,7 +88,7 @@ class AuditLogIntegrationTest extends KernelTestCase
             aggregateId: 'agg-789'
         );
 
-        $handlerQuery = self::getContainer()->get(id: \App\AuditLog\Application\Query\GetAuditLogs\GetAuditLogsQueryHandler::class);
+        $handlerQuery = self::getContainer()->get(id: GetAuditLogsQueryHandler::class);
         $results = $handlerQuery(query: $query);
 
         $this->assertCount(expectedCount: 1, haystack: $results);

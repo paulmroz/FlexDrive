@@ -19,9 +19,9 @@ class ActivateTransitionTest extends TestCase
     private function createSubscription(SubscriptionStatus $status): Subscription
     {
         return new Subscription(
-            id: new SubscriptionId(value: 'sub-1'),
-            userId: new UserId(value: 'user-1'),
-            carId: new CarId(value: 'car-1'),
+            id: SubscriptionId::generate(),
+            userId: UserId::generate(),
+            carId: CarId::generate(),
             startDate: new DateTimeImmutable(),
             endDate: null,
             status: $status
