@@ -4,6 +4,7 @@ framework:
         buses:
             command.bus:
                 middleware:
+                    - App\Shared\Infrastructure\Trace\TraceMessengerMiddleware
                     - validation
                     - doctrine_transaction: ['default']
                     - doctrine_transaction: ['subscription']
@@ -14,6 +15,7 @@ framework:
                 default_middleware:
                     allow_no_handlers: true
                 middleware:
+                    - App\Shared\Infrastructure\Trace\TraceMessengerMiddleware
                     - App\AuditLog\Infrastructure\Middleware\AuditLogMiddleware
 
         transports:
