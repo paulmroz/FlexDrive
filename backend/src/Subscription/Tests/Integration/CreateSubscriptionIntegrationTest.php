@@ -18,6 +18,7 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
 {
     private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
+    private EntityManagerInterface $subscriptionEntityManager;
 
     protected function setUp(): void
     {
@@ -27,11 +28,13 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
 
         $container = static::getContainer();
         $this->entityManager = $container->get(id: 'doctrine.orm.entity_manager');
+        $this->subscriptionEntityManager = $container->get(id: 'doctrine.orm.subscription_entity_manager');
         $connection = $this->entityManager->getConnection();
+        $subConnection = $this->subscriptionEntityManager->getConnection();
 
         $connection->executeStatement(sql: 'TRUNCATE TABLE "users" CASCADE');
         $connection->executeStatement(sql: 'TRUNCATE TABLE "cars" CASCADE');
-        $connection->executeStatement(sql: 'TRUNCATE TABLE "subscriptions" CASCADE');
+        $subConnection->executeStatement(sql: 'TRUNCATE TABLE "subscriptions" CASCADE');
 
         $paymentGatewayClientMock = $this->createMock(originalClassName: PaymentGatewayClientInterface::class);
         $paymentGatewayClientMock->method('createCheckoutSession')->willReturnCallback(callback: function () {
@@ -102,8 +105,8 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
             actual: $this->client->getResponse()->getStatusCode()
         );
 
-        $this->entityManager->clear();
-        $subscription = $this->entityManager
+        $this->subscriptionEntityManager->clear();
+        $subscription = $this->subscriptionEntityManager
             ->getRepository(Subscription::class)
             ->findOneBy(['carId' => $carId->getValue()]);
         $this->assertNotNull(actual: $subscription);
@@ -387,8 +390,8 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
             actual: $this->client->getResponse()->getStatusCode()
         );
 
-        $this->entityManager->clear();
-        $subscription = $this->entityManager
+        $this->subscriptionEntityManager->clear();
+        $subscription = $this->subscriptionEntityManager
             ->getRepository(Subscription::class)
             ->find($subscriptionId);
 

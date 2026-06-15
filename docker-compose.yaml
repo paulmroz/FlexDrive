@@ -1,3 +1,4 @@
+version: "3.8"
 services:
   php:
     build:
@@ -10,10 +11,14 @@ services:
     environment:
       SERVER_NAME: :8000
       DATABASE_URL: "postgresql://app:password@db:5432/app?serverVersion=16&charset=utf8"
+      SUBSCRIPTION_DATABASE_URL: "postgresql://app:password@db_subscription:5432/app?serverVersion=16&charset=utf8"
       REDIS_URL: "redis://redis:6379"
+      MESSENGER_TRANSPORT_DSN: "amqp://app:password@rabbitmq:5672/%2f/messages"
     depends_on:
       - db
+      - db_subscription
       - redis
+      - rabbitmq
 
   worker:
     build:
@@ -23,11 +28,15 @@ services:
       - ./backend:/app
     environment:
       DATABASE_URL: "postgresql://app:password@db:5432/app?serverVersion=16&charset=utf8"
+      SUBSCRIPTION_DATABASE_URL: "postgresql://app:password@db_subscription:5432/app?serverVersion=16&charset=utf8"
       REDIS_URL: "redis://redis:6379"
-    command: php bin/console messenger:consume async -vv
+      MESSENGER_TRANSPORT_DSN: "amqp://app:password@rabbitmq:5672/%2f/messages"
+    command: php bin/console messenger:consume async_commands async_events failed -vv
     depends_on:
       - db
+      - db_subscription
       - redis
+      - rabbitmq
 
   db:
     image: postgres:16-alpine
@@ -38,5 +47,28 @@ services:
     ports:
       - "5432:5432"
 
+  db_subscription:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+
   redis:
     image: redis:7-alpine
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: app
+      RABBITMQ_DEFAULT_PASS: password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 3

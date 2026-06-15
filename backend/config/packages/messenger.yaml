@@ -5,7 +5,8 @@ framework:
             command.bus:
                 middleware:
                     - validation
-                    - doctrine_transaction
+                    - doctrine_transaction: ['default']
+                    - doctrine_transaction: ['subscription']
             query.bus:
                 middleware:
                     - validation
@@ -17,16 +18,46 @@ framework:
 
         transports:
             # https://symfony.com/doc/current/messenger.html#transport-configuration
-            # async: '%env(MESSENGER_TRANSPORT_DSN)%'
-            # failed: 'doctrine://default?queue_name=failed'
             sync: 'sync://'
-            async:
+            async_events:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    exchange:
+                        name: domain_events
+                        type: topic
+                    queues:
+                        events_queue: ~
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 0
+            async_commands:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    exchange:
+                        name: domain_commands
+                        type: direct
+                    queues:
+                        commands_queue: ~
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 0
+            failed:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    exchange:
+                        name: dlx
+                        type: direct
+                    queues:
+                        dlq: ~
 
         routing:
             # Route your messages to the transports
-            # 'App\Message\YourMessage': async
-            'App\Car\Application\Command\ProcessChatMessageCommand': async
-            'App\AuditLog\Application\Command\CreateAuditLog\CreateAuditLogCommand': async
+            'App\Car\Application\Command\ProcessChatMessageCommand': async_commands
+            'App\AuditLog\Application\Command\CreateAuditLog\CreateAuditLogCommand': async_commands
+            'App\Shared\Domain\Event\AuditableEventInterface': async_events
 
         

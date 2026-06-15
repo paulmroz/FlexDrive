@@ -26,6 +26,7 @@ class PaymentWebhookIntegrationTest extends WebTestCase
 {
     private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
+    private EntityManagerInterface $subscriptionEntityManager;
     private $paymentGatewayMock;
 
     protected function setUp(): void
@@ -35,13 +36,15 @@ class PaymentWebhookIntegrationTest extends WebTestCase
         $container = static::getContainer();
 
         $this->entityManager = $container->get(id: 'doctrine.orm.entity_manager');
+        $this->subscriptionEntityManager = $container->get(id: 'doctrine.orm.subscription_entity_manager');
         $connection = $this->entityManager->getConnection();
+        $subConnection = $this->subscriptionEntityManager->getConnection();
 
         $connection->executeStatement(sql: 'TRUNCATE TABLE "users" CASCADE');
         $connection->executeStatement(sql: 'TRUNCATE TABLE "cars" CASCADE');
-        $connection->executeStatement(sql: 'TRUNCATE TABLE "subscriptions" CASCADE');
-        $connection->executeStatement(sql: 'TRUNCATE TABLE "payments" CASCADE');
-        $connection->executeStatement(sql: 'TRUNCATE TABLE "processed_webhooks" CASCADE');
+        $subConnection->executeStatement(sql: 'TRUNCATE TABLE "subscriptions" CASCADE');
+        $subConnection->executeStatement(sql: 'TRUNCATE TABLE "payments" CASCADE');
+        $subConnection->executeStatement(sql: 'TRUNCATE TABLE "processed_webhooks" CASCADE');
 
         $this->paymentGatewayMock = $this->createMock(originalClassName: PaymentGatewayClientInterface::class);
         $container->set(id: PaymentGatewayClientInterface::class, service: $this->paymentGatewayMock);
@@ -90,7 +93,7 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             startDate: new DateTimeImmutable(),
             status: SubscriptionStatus::PENDING_PAYMENT
         );
-        $this->entityManager->persist($subscription);
+        $this->subscriptionEntityManager->persist($subscription);
 
         $payment = new Payment(
             id: Uuid::v4()->toString(),
@@ -100,8 +103,9 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             currency: 'PLN',
             status: PaymentStatus::CREATED
         );
-        $this->entityManager->persist($payment);
+        $this->subscriptionEntityManager->persist($payment);
         $this->entityManager->flush();
+        $this->subscriptionEntityManager->flush();
 
         $this->paymentGatewayMock->expects($this->never())->method('refund');
 
@@ -127,14 +131,18 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             content: (string) json_encode(value: $payload)
         );
 
+        if ($this->client->getResponse()->getStatusCode() !== Response::HTTP_OK) {
+            fwrite(STDERR, $this->client->getResponse()->getContent() . "\n");
+        }
         $this->assertSame(
             expected: Response::HTTP_OK,
             actual: $this->client->getResponse()->getStatusCode()
         );
 
         $this->entityManager->clear();
-        $updatedPayment = $this->entityManager->find(className: Payment::class, id: $payment->getId());
-        $updatedSubscription = $this->entityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
+        $this->subscriptionEntityManager->clear();
+        $updatedPayment = $this->subscriptionEntityManager->find(className: Payment::class, id: $payment->getId());
+        $updatedSubscription = $this->subscriptionEntityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
 
         $this->assertSame(expected: PaymentStatus::PAID, actual: $updatedPayment->getStatus());
         $this->assertSame(expected: SubscriptionStatus::ACTIVE, actual: $updatedSubscription->getStatus());
@@ -154,7 +162,7 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             startDate: new DateTimeImmutable(),
             status: SubscriptionStatus::PENDING_PAYMENT
         );
-        $this->entityManager->persist($subscription);
+        $this->subscriptionEntityManager->persist($subscription);
 
         $payment = new Payment(
             id: Uuid::v4()->toString(),
@@ -164,8 +172,9 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             currency: 'PLN',
             status: PaymentStatus::CREATED
         );
-        $this->entityManager->persist($payment);
+        $this->subscriptionEntityManager->persist($payment);
         $this->entityManager->flush();
+        $this->subscriptionEntityManager->flush();
 
         $this->paymentGatewayMock->expects($this->once())
             ->method('refund')
@@ -199,7 +208,8 @@ class PaymentWebhookIntegrationTest extends WebTestCase
         );
 
         $this->entityManager->clear();
-        $updatedPayment = $this->entityManager->find(className: Payment::class, id: $payment->getId());
+        $this->subscriptionEntityManager->clear();
+        $updatedPayment = $this->subscriptionEntityManager->find(className: Payment::class, id: $payment->getId());
         $this->assertSame(expected: PaymentStatus::PAID_CONFLICT, actual: $updatedPayment->getStatus());
     }
 
@@ -217,7 +227,7 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             startDate: new DateTimeImmutable(),
             status: SubscriptionStatus::PENDING_PAYMENT
         );
-        $this->entityManager->persist($subscription);
+        $this->subscriptionEntityManager->persist($subscription);
 
         $payment = new Payment(
             id: Uuid::v4()->toString(),
@@ -227,10 +237,11 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             currency: 'PLN',
             status: PaymentStatus::CREATED
         );
-        $this->entityManager->persist($payment);
+        $this->subscriptionEntityManager->persist($payment);
 
         $this->entityManager->flush();
-        $connection = $this->entityManager->getConnection();
+        $this->subscriptionEntityManager->flush();
+        $connection = $this->subscriptionEntityManager->getConnection();
         $connection->executeStatement(
             sql: 'UPDATE payments SET created_at = :date WHERE id = :id',
             params: [
@@ -245,8 +256,9 @@ class PaymentWebhookIntegrationTest extends WebTestCase
         $commandTester->execute(input: []);
 
         $this->entityManager->clear();
-        $updatedPayment = $this->entityManager->find(className: Payment::class, id: $payment->getId());
-        $updatedSubscription = $this->entityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
+        $this->subscriptionEntityManager->clear();
+        $updatedPayment = $this->subscriptionEntityManager->find(className: Payment::class, id: $payment->getId());
+        $updatedSubscription = $this->subscriptionEntityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
 
         $this->assertSame(expected: PaymentStatus::FAILED, actual: $updatedPayment->getStatus());
         $this->assertSame(expected: SubscriptionStatus::CANCELLED, actual: $updatedSubscription->getStatus());
@@ -266,7 +278,7 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             startDate: new DateTimeImmutable(),
             status: SubscriptionStatus::ACTIVE
         );
-        $this->entityManager->persist($subscription);
+        $this->subscriptionEntityManager->persist($subscription);
 
         $payment = new Payment(
             id: Uuid::v4()->toString(),
@@ -276,8 +288,9 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             currency: 'PLN',
             status: PaymentStatus::PAID
         );
-        $this->entityManager->persist($payment);
+        $this->subscriptionEntityManager->persist($payment);
         $this->entityManager->flush();
+        $this->subscriptionEntityManager->flush();
 
         $payload = [
             'id' => 'evt_alice_refund_001',
@@ -306,8 +319,9 @@ class PaymentWebhookIntegrationTest extends WebTestCase
         );
 
         $this->entityManager->clear();
-        $updatedPayment = $this->entityManager->find(className: Payment::class, id: $payment->getId());
-        $updatedSubscription = $this->entityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
+        $this->subscriptionEntityManager->clear();
+        $updatedPayment = $this->subscriptionEntityManager->find(className: Payment::class, id: $payment->getId());
+        $updatedSubscription = $this->subscriptionEntityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
 
         $this->assertSame(expected: PaymentStatus::REFUNDED, actual: $updatedPayment->getStatus());
         $this->assertSame(expected: SubscriptionStatus::CANCELLED, actual: $updatedSubscription->getStatus());
@@ -327,7 +341,7 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             startDate: new DateTimeImmutable(),
             status: SubscriptionStatus::ACTIVE
         );
-        $this->entityManager->persist($subscription);
+        $this->subscriptionEntityManager->persist($subscription);
 
         $payment = new Payment(
             id: Uuid::v4()->toString(),
@@ -337,8 +351,9 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             currency: 'PLN',
             status: PaymentStatus::PAID
         );
-        $this->entityManager->persist($payment);
+        $this->subscriptionEntityManager->persist($payment);
         $this->entityManager->flush();
+        $this->subscriptionEntityManager->flush();
 
         $payload = [
             'id' => 'evt_alice_dispute_001',
@@ -367,8 +382,9 @@ class PaymentWebhookIntegrationTest extends WebTestCase
         );
 
         $this->entityManager->clear();
-        $updatedPayment = $this->entityManager->find(className: Payment::class, id: $payment->getId());
-        $updatedSubscription = $this->entityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
+        $this->subscriptionEntityManager->clear();
+        $updatedPayment = $this->subscriptionEntityManager->find(className: Payment::class, id: $payment->getId());
+        $updatedSubscription = $this->subscriptionEntityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
 
         $this->assertSame(expected: PaymentStatus::DISPUTED, actual: $updatedPayment->getStatus());
         $this->assertSame(expected: SubscriptionStatus::CANCELLED, actual: $updatedSubscription->getStatus());
@@ -388,7 +404,7 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             startDate: new DateTimeImmutable(),
             status: SubscriptionStatus::CANCELLED
         );
-        $this->entityManager->persist($subscription);
+        $this->subscriptionEntityManager->persist($subscription);
 
         $payment = new Payment(
             id: Uuid::v4()->toString(),
@@ -398,8 +414,9 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             currency: 'PLN',
             status: PaymentStatus::CREATED
         );
-        $this->entityManager->persist($payment);
+        $this->subscriptionEntityManager->persist($payment);
         $this->entityManager->flush();
+        $this->subscriptionEntityManager->flush();
 
         $payload = [
             'id' => 'evt_late_payment_001',
@@ -429,8 +446,9 @@ class PaymentWebhookIntegrationTest extends WebTestCase
         );
 
         $this->entityManager->clear();
-        $updatedPayment = $this->entityManager->find(className: Payment::class, id: $payment->getId());
-        $updatedSubscription = $this->entityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
+        $this->subscriptionEntityManager->clear();
+        $updatedPayment = $this->subscriptionEntityManager->find(className: Payment::class, id: $payment->getId());
+        $updatedSubscription = $this->subscriptionEntityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
 
         $this->assertSame(expected: PaymentStatus::PAID, actual: $updatedPayment->getStatus());
         $this->assertSame(expected: SubscriptionStatus::ACTIVE, actual: $updatedSubscription->getStatus());
@@ -450,7 +468,7 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             startDate: new DateTimeImmutable(),
             status: SubscriptionStatus::CANCELLED
         );
-        $this->entityManager->persist($subscription);
+        $this->subscriptionEntityManager->persist($subscription);
 
         $payment = new Payment(
             id: Uuid::v4()->toString(),
@@ -460,7 +478,7 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             currency: 'PLN',
             status: PaymentStatus::CREATED
         );
-        $this->entityManager->persist($payment);
+        $this->subscriptionEntityManager->persist($payment);
 
         $overlappingSubscriptionId = SubscriptionId::generate();
         $overlappingSubscription = new Subscription(
@@ -470,9 +488,10 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             startDate: new DateTimeImmutable(),
             status: SubscriptionStatus::ACTIVE
         );
-        $this->entityManager->persist($overlappingSubscription);
+        $this->subscriptionEntityManager->persist($overlappingSubscription);
 
         $this->entityManager->flush();
+        $this->subscriptionEntityManager->flush();
 
         $this->paymentGatewayMock->expects($this->once())
             ->method('refund')
@@ -506,8 +525,9 @@ class PaymentWebhookIntegrationTest extends WebTestCase
         );
 
         $this->entityManager->clear();
-        $updatedPayment = $this->entityManager->find(className: Payment::class, id: $payment->getId());
-        $updatedSubscription = $this->entityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
+        $this->subscriptionEntityManager->clear();
+        $updatedPayment = $this->subscriptionEntityManager->find(className: Payment::class, id: $payment->getId());
+        $updatedSubscription = $this->subscriptionEntityManager->find(className: Subscription::class, id: $subscriptionId->getValue());
 
         $this->assertSame(expected: PaymentStatus::PAID_CONFLICT, actual: $updatedPayment->getStatus());
         $this->assertSame(expected: SubscriptionStatus::CANCELLED, actual: $updatedSubscription->getStatus());
@@ -527,7 +547,7 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             startDate: new DateTimeImmutable(),
             status: SubscriptionStatus::PENDING_PAYMENT
         );
-        $this->entityManager->persist($subscription);
+        $this->subscriptionEntityManager->persist($subscription);
 
         $payment = new Payment(
             id: Uuid::v4()->toString(),
@@ -537,8 +557,9 @@ class PaymentWebhookIntegrationTest extends WebTestCase
             currency: 'PLN',
             status: PaymentStatus::CREATED
         );
-        $this->entityManager->persist($payment);
+        $this->subscriptionEntityManager->persist($payment);
         $this->entityManager->flush();
+        $this->subscriptionEntityManager->flush();
 
         $payload = [
             'id' => 'evt_duplicate_id_999',

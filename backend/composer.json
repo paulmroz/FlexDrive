@@ -19,6 +19,7 @@
         "symfony/ai-deep-seek-platform": "^0.9.0",
         "symfony/ai-open-ai-platform": "*",
         "symfony/ai-redis-message-store": "^0.9.0",
+        "symfony/amqp-messenger": "7.4.*",
         "symfony/asset": "7.4.*",
         "symfony/console": "7.4.*",
         "symfony/doctrine-messenger": "7.4.*",

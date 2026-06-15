@@ -15,6 +15,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 class SubscriptionConcurrencyTest extends KernelTestCase
 {
     private EntityManagerInterface $entityManager;
+    private EntityManagerInterface $subscriptionEntityManager;
 
     protected function setUp(): void
     {
@@ -23,11 +24,13 @@ class SubscriptionConcurrencyTest extends KernelTestCase
 
         $container = self::getContainer();
         $this->entityManager = $container->get(id: 'doctrine.orm.entity_manager');
+        $this->subscriptionEntityManager = $container->get(id: 'doctrine.orm.subscription_entity_manager');
         $connection = $this->entityManager->getConnection();
+        $subConnection = $this->subscriptionEntityManager->getConnection();
 
         $connection->executeStatement(sql: 'TRUNCATE TABLE "users" CASCADE');
         $connection->executeStatement(sql: 'TRUNCATE TABLE "cars" CASCADE');
-        $connection->executeStatement(sql: 'TRUNCATE TABLE "subscriptions" CASCADE');
+        $subConnection->executeStatement(sql: 'TRUNCATE TABLE "subscriptions" CASCADE');
     }
 
     public function testConcurrentSubscriptionCreationLocksCarPessimistically(): void
