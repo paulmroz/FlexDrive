@@ -24,6 +24,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Subscription/Domain/Entity'
                 prefix: 'App\Subscription\Domain\Entity'
                 alias: Subscription
+            Shared:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Shared/Domain/Entity'
+                prefix: 'App\Shared\Domain\Entity'
+                alias: Shared
         controller_resolver:
             auto_mapping: false
 

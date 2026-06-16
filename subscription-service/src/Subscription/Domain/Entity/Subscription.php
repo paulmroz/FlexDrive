@@ -11,6 +11,8 @@ use App\Subscription\Domain\ValueObject\SubscriptionStatus;
 use Doctrine\ORM\Mapping as ORM;
 use DateTimeImmutable;
 use App\Subscription\Domain\Transition\SubscriptionTransitionInterface;
+use App\Subscription\Domain\ValueObject\SagaStatus;
+use DomainException;
 
 #[ORM\Entity]
 #[ORM\Table(name: '`subscriptions`')]
@@ -37,6 +39,9 @@ class Subscription
 
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $createdAt;
+
+    #[ORM\Column(type: 'string', length: 30, enumType: SagaStatus::class, nullable: true)]
+    private ?SagaStatus $sagaStatus = null;
 
     public function __construct(
         SubscriptionId $id,
@@ -100,5 +105,28 @@ class Subscription
         };
 
         $transition->apply(subscription: $this, mutator: $mutator);
+    }
+
+    public function setSagaStatus(SagaStatus $status): void
+    {
+        $validTransitions = [
+            SagaStatus::PENDING_LOCK->value => [SagaStatus::LOCKED, SagaStatus::COMPENSATION_REQUIRED],
+            SagaStatus::LOCKED->value => [SagaStatus::COMPENSATION_REQUIRED, SagaStatus::COMPLETED],
+            SagaStatus::COMPENSATION_REQUIRED->value => [SagaStatus::COMPLETED],
+        ];
+
+        if (null !== $this->sagaStatus) {
+            $allowed = $validTransitions[$this->sagaStatus->value] ?? [];
+            if (!in_array(needle: $status, haystack: $allowed, strict: true)) {
+                throw new DomainException(message: sprintf('Invalid saga transition from %s to %s', $this->sagaStatus->value, $status->value));
+            }
+        }
+
+        $this->sagaStatus = $status;
+    }
+
+    public function getSagaStatus(): ?SagaStatus
+    {
+        return $this->sagaStatus;
     }
 }

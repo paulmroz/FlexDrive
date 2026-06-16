@@ -10,6 +10,7 @@ use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Message\SystemMessage;
 use Symfony\AI\Platform\Bridge\DeepSeek\DeepSeek;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Throwable;
 
 class DeepSeekStructuredOutputListener
 {
@@ -67,7 +68,7 @@ class DeepSeekStructuredOutputListener
         try {
             $data = $event->getDeferredResult()->getRawResult()->getData();
             file_put_contents(filename: 'var/deepseek_raw.json', data: json_encode(value: $data, flags: JSON_PRETTY_PRINT));
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             file_put_contents(filename: 'var/listener_error.txt', data: $e->getMessage() . "\n" . $e->getTraceAsString());
         }
     }

@@ -8,7 +8,9 @@ use App\Car\Api\Dto\CarDto;
 
 interface CarApiInterface
 {
-    public function lockAndValidateCar(string $carId): CarDto;
+    public function lockAndValidateCar(string $carId, string $sagaId): CarDto;
+
+    public function unlockCar(string $carId, string $sagaId): void;
 
     public function getCarDetails(string $carId): CarDto;
 

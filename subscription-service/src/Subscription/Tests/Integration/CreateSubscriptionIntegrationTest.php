@@ -157,6 +157,64 @@ class CreateSubscriptionIntegrationTest extends WebTestCase
         );
     }
 
+    public function testOverlapValidationErrorDoesNotTriggerCompensation(): void
+    {
+        $carId = CarId::generate();
+        
+        $this->carApiMock->method('lockAndValidateCar')->willReturn(new CarDto(
+            id: $carId->getValue(),
+            brand: 'Tesla',
+            model: 'Model Y',
+            pricePerDay: 3000
+        ));
+
+        // Expect unlockCar to NEVER be called because the overlap fails BEFORE the lock
+        $this->carApiMock->expects($this->never())
+            ->method('unlockCar');
+
+        $token = $this->getAuthToken(email: 'user@example.com');
+
+        // Create a first subscription
+        $this->client->request(
+            method: 'POST',
+            uri: '/api/subscriptions',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+            ],
+            content: (string) json_encode(value: [
+                'carId' => $carId->getValue(),
+                'startDate' => '2026-06-01 12:00:00',
+                'endDate' => '2026-06-08 12:00:00',
+            ])
+        );
+
+        $this->assertSame(
+            expected: Response::HTTP_CREATED,
+            actual: $this->client->getResponse()->getStatusCode()
+        );
+
+        // Create overlapping subscription to trigger compensation
+        $this->client->request(
+            method: 'POST',
+            uri: '/api/subscriptions',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+            ],
+            content: (string) json_encode(value: [
+                'carId' => $carId->getValue(),
+                'startDate' => '2026-06-05 12:00:00',
+                'endDate' => '2026-06-12 12:00:00',
+            ])
+        );
+
+        $this->assertSame(
+            expected: Response::HTTP_UNPROCESSABLE_ENTITY,
+            actual: $this->client->getResponse()->getStatusCode()
+        );
+    }
+
     public function testValidationErrors(): void
     {
         $token = $this->getAuthToken(email: 'user@example.com');

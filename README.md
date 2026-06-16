@@ -1,4 +1,4 @@
-# DriveAgency 🚘
+# DriveAgency
 
 [![PHP](https://img.shields.io/badge/PHP-8.3-777BB4.svg?style=flat-square&logo=php)](https://www.php.net/)
 [![Symfony](https://img.shields.io/badge/Symfony-7.4-000000.svg?style=flat-square&logo=symfony)](https://symfony.com/)
@@ -12,30 +12,36 @@ The system is designed to handle complex workflows—such as concurrency control
 
 ---
 
-## 📑 Table of Contents
-1. [Core Philosophy](#-core-philosophy)
-2. [Architecture & Patterns](#-architecture--patterns)
-3. [Domain Modules (Bounded Contexts)](#-domain-modules-bounded-contexts)
-4. [Deep Dives](#-deep-dives)
+## Table of Contents
+1. [Core Philosophy](#core-philosophy)
+2. [Architecture & Patterns](#architecture--patterns)
+3. [Domain Modules (Bounded Contexts)](#domain-modules-bounded-contexts)
+4. [Microservices Integration](#microservices-integration)
+   - [The Saga Pattern](#the-saga-pattern)
+   - [Transactional Outbox](#transactional-outbox)
+   - [Distributed Tracing](#distributed-tracing)
+5. [Deep Dives](#deep-dives)
    - [Subscription State Machine](#subscription-state-machine)
    - [AI Fleet Advisor (Vibe Search)](#ai-fleet-advisor-vibe-search)
    - [Event-Driven Audit Logging](#event-driven-audit-logging)
-5. [Directory Structure](#-directory-structure)
-6. [Getting Started (Developer Setup)](#-getting-started-developer-setup)
-7. [API Documentation](#-api-documentation)
+6. [Directory Structure](#directory-structure)
+7. [Getting Started (Developer Setup)](#getting-started-developer-setup)
+8. [API Documentation](#api-documentation)
 
 ---
 
-## 🧠 Core Philosophy
+## Core Philosophy
 
-We chose a **Modular Monolith** architecture. While microservices offer independent deployment, they often introduce premature operational complexity (network latency, distributed transactions, complex orchestration). A Modular Monolith gives us the best of both worlds: 
-- **Strict Domain Boundaries**: Modules cannot access each other's databases or internal implementations.
-- **Low Operational Overhead**: Deployed as a single scalable unit via FrankenPHP.
-- **Future-Proof**: Because bounded contexts only communicate via isolated APIs, Commands, Queries, and Domain Events, extracting a module into a standalone microservice later requires minimal refactoring.
+We operate on a **Distributed Architecture** that evolved from a Modular Monolith. The core backend operates as a scalable monolith, but highly autonomous domains (like the Subscription service) have been extracted into independent **Microservices**. 
+
+- **Strict Domain Boundaries**: Modules and services cannot access each other's databases or internal implementations.
+- **Resilient Distributed Transactions**: We use the **Saga Pattern** with compensation transactions across service boundaries.
+- **Guaranteed Consistency**: The **Transactional Outbox Pattern** ensures that domain events and compensation messages are reliably delivered even in the face of network failures.
+- **Observability**: **Distributed Tracing** correlates logs and requests across the monolith and microservices using propagated Trace IDs.
 
 ---
 
-## 🏗️ Architecture & Patterns
+## Architecture & Patterns
 
 The backend strictly adheres to **Clean Architecture** principles:
 
@@ -88,16 +94,38 @@ graph TD
 
 ---
 
-## 📦 Domain Modules (Bounded Contexts)
+## Domain Modules (Bounded Contexts)
 
-1. **User Module**: Handles authentication (LexikJWT), authorization, and user profiles.
-2. **Car Module**: Manages the fleet inventory, availability, and the AI-driven natural language search (Vibe Search).
-3. **Subscription Module**: Manages the complex lifecycle of car rentals, handling Stripe payment webhooks, billing cycles, and status transitions.
-4. **AuditLog Module**: An isolated observer context that listens to domain events from other modules and durably records them for compliance and history tracking.
+1. **User Module (Monolith)**: Handles authentication (LexikJWT), authorization, and user profiles.
+2. **Car Module (Monolith)**: Manages the fleet inventory, availability, and the AI-driven natural language search (Vibe Search).
+3. **AuditLog Module (Monolith)**: An isolated observer context that listens to domain events from other modules and durably records them for compliance and history tracking.
+4. **Subscription Service (Microservice)**: An independent microservice that manages the complex lifecycle of car rentals, handling Stripe payment webhooks, billing cycles, and status transitions, communicating with the monolith via HTTP APIs and Message Buses.
 
 ---
 
-## 🔍 Deep Dives
+## Microservices Integration
+
+### The Saga Pattern
+When a user subscribes to a car, the Subscription Service (microservice) must coordinate with the Car Module (monolith) to lock the vehicle. We use the **Choreography Saga Pattern** to ensure consistency across databases without distributed locking.
+- **Step 1:** The Subscription Service creates a Pending subscription.
+- **Step 2:** It makes an API call to the Monolith to lock the vehicle.
+- **Step 3:** If the local database fails to update to "Locked" after the vehicle was successfully locked remotely, a **Compensation Transaction** is triggered to unlock the vehicle on the Monolith.
+
+### Transactional Outbox
+To guarantee that compensation transactions are never lost if the network fails during a Saga rollback, we utilize the **Transactional Outbox Pattern**:
+1. Compensation messages (e.g., `RetryCompensationMessage`) are serialized and inserted into an `outbox_messages` table in the exact same database transaction as the business failure.
+2. An asynchronous background worker (`app:process-outbox`) uses `SELECT ... FOR UPDATE SKIP LOCKED` to safely pull messages and execute the HTTP calls to the Monolith.
+3. The command strictly deserializes only whitelisted message classes, maintaining robust security.
+
+### Distributed Tracing
+To debug requests spanning multiple services, we implement **Distributed Tracing**. 
+- Every incoming HTTP request or CLI command generates (or inherits) a UUID `X-Trace-Id`.
+- This ID is automatically injected into all internal logs (Monolog Processor) and outgoing HTTP requests to other services.
+- The receiving microservice parses this header and continues the trace, allowing for seamless cross-service observability.
+
+---
+
+## Deep Dives
 
 ### Subscription State Machine
 To guarantee that subscription states (e.g., Active, Suspended, Cancelled) cannot be bypassed or corrupted, the `Subscription` aggregate root uses explicit Transition classes. 
@@ -139,7 +167,7 @@ When an Aggregate Root (like a User or Subscription) undergoes a significant sta
 
 ---
 
-## 📁 Directory Structure
+## Directory Structure
 
 Our architecture enforces isolation by defining standard layers inside every module.
 
@@ -156,7 +184,7 @@ src/
 
 ---
 
-## 🚀 Getting Started (Developer Setup)
+## Getting Started (Developer Setup)
 
 ### Prerequisites
 * Docker & Docker Compose
@@ -191,7 +219,7 @@ Access the application at `http://localhost:5173/`.
 
 ---
 
-## 📖 API Documentation
+## API Documentation
 
 The REST API is documented using OpenAPI (Swagger). Once the backend is running, access the interactive API documentation at:
 **`http://localhost/api/doc`**

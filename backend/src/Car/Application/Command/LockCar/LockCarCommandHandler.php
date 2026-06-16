@@ -27,9 +27,17 @@ class LockCarCommandHandler
             throw new InvalidArgumentException(message: 'Car not found.');
         }
 
-        if (false === $car->isAvailable()) {
-            throw new DomainException(message: 'Car is already booked/unavailable.');
+        if (null !== $command->sagaId && $car->getLockedBySaga() === $command->sagaId) {
+            return new CarDto(
+                id: $car->getId()->getValue(),
+                brand: $car->getBrand(),
+                model: $car->getModel(),
+                pricePerDay: $car->getPricePerDay()
+            );
         }
+
+        $car->book(sagaId: $command->sagaId);
+        $this->carRepository->save(car: $car);
 
         return new CarDto(
             id: $car->getId()->getValue(),

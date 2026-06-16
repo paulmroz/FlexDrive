@@ -42,6 +42,10 @@ services:
         arguments:
             $carClient: '@car.client'
 
+    # Map the Outbox repository interface
+    App\Shared\Domain\Repository\OutboxMessageRepositoryInterface:
+        class: App\Shared\Infrastructure\Repository\OutboxMessageRepository
+
     # Listen to JWT creation events (for programmatic test tokens)
     App\User\Infrastructure\EventListener\JWTCreatedListener:
         tags:

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Car\Application\Command\LockCar;
+namespace App\Car\Application\Command\UnlockCar;
 
-class LockCarCommand
+class UnlockCarCommand
 {
     public function __construct(
         public readonly string $id,

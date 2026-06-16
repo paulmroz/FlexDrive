@@ -28,6 +28,12 @@ class Car
     #[ORM\Column(type: 'boolean')]
     private bool $available;
 
+    #[ORM\Column(type: 'string', length: 36, nullable: true)]
+    private ?string $lockedBySaga = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $lockExpiresAt = null;
+
     public function __construct(
         CarId $id,
         string $brand,
@@ -67,17 +73,33 @@ class Car
         return $this->available;
     }
 
-    public function book(): void
+    public function getLockedBySaga(): ?string
+    {
+        return $this->lockedBySaga;
+    }
+
+    public function getLockExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->lockExpiresAt;
+    }
+
+    public function book(?string $sagaId = null): void
     {
         if (false === $this->available) {
             throw new DomainException(message: 'Car is already booked/unavailable.');
         }
         $this->available = false;
+        $this->lockedBySaga = $sagaId;
+        if (null !== $sagaId) {
+            $this->lockExpiresAt = new \DateTimeImmutable(datetime: '+5 minutes');
+        }
     }
 
     public function release(): void
     {
         $this->available = true;
+        $this->lockedBySaga = null;
+        $this->lockExpiresAt = null;
     }
 
     public function update(

@@ -6,6 +6,7 @@ namespace App\Car\Infrastructure\Api;
 
 use App\Car\Api\CarApiInterface;
 use App\Car\Api\Dto\CarDto;
+use App\Shared\Infrastructure\Trace\TraceContext;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Component\HttpFoundation\Response;
 use InvalidArgumentException;
@@ -19,9 +20,18 @@ class HttpCarApi implements CarApiInterface
     ) {
     }
 
-    public function lockAndValidateCar(string $carId): CarDto
+    public function lockAndValidateCar(string $carId, string $sagaId): CarDto
     {
-        $response = $this->carClient->request(method: 'POST', url: sprintf('/api/cars/%s/lock', $carId));
+        $response = $this->carClient->request(
+            method: 'POST',
+            url: sprintf('/api/cars/%s/lock', $carId),
+            options: [
+                'headers' => [
+                    'X-Trace-Id' => TraceContext::getTraceId()
+                ],
+                'json' => ['saga_id' => $sagaId]
+            ]
+        );
 
         if (Response::HTTP_NOT_FOUND === $response->getStatusCode()) {
             throw new InvalidArgumentException(message: 'Car not found.');
@@ -44,6 +54,24 @@ class HttpCarApi implements CarApiInterface
             model: $data['model'],
             pricePerDay: $data['pricePerDay']
         );
+    }
+
+    public function unlockCar(string $carId, string $sagaId): void
+    {
+        $response = $this->carClient->request(
+            method: 'POST',
+            url: sprintf('/api/cars/%s/unlock', $carId),
+            options: [
+                'headers' => [
+                    'X-Trace-Id' => TraceContext::getTraceId()
+                ],
+                'json' => ['saga_id' => $sagaId]
+            ]
+        );
+
+        if (Response::HTTP_OK !== $response->getStatusCode()) {
+            throw new RuntimeException(message: 'Failed to unlock car during compensation.');
+        }
     }
 
     public function getCarDetails(string $carId): CarDto
