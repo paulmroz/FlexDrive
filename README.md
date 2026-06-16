@@ -54,19 +54,19 @@ The backend strictly adheres to **Clean Architecture** principles:
 
 ```mermaid
 graph TD
-    subgraph Presentation Layer
+    subgraph PresentationLayer ["Presentation Layer"]
         React[React/Vite Frontend]
         API[REST API / Controllers]
         Swagger[Nelmio OpenAPI Docs]
     end
 
-    subgraph Application Boundary (Symfony Messenger)
+    subgraph AppBoundary ["Application Boundary (Symfony Messenger)"]
         CommandBus[Command Bus]
         QueryBus[Query Bus]
         EventBus[Event Bus]
     end
 
-    subgraph Domain Modules (Isolated Bounded Contexts)
+    subgraph DomainModules ["Domain Modules (Isolated Bounded Contexts)"]
         direction TB
         User[User Context]
         Car[Car Context]
@@ -74,7 +74,7 @@ graph TD
         Audit[AuditLog Context]
     end
 
-    subgraph Infrastructure Adapters
+    subgraph InfrastructureAdapters ["Infrastructure Adapters"]
         Doctrine[Doctrine ORM]
         Redis[Redis Storage]
         Stripe[Stripe Client]
