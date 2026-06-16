@@ -6,51 +6,51 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
 
-DriveAgency is a modern, enterprise-grade car subscription platform. It demonstrates advanced architectural patterns and engineering practices, bridging complex backend domain logic with a highly responsive frontend.
+DriveAgency is a car subscription platform built with PHP and React. It serves as a practical example of integrating complex backend domain logic with a responsive frontend.
 
-The system is designed to handle complex workflows—such as concurrency control during vehicle bookings, AI-driven advisory chats, and strict subscription lifecycle state machines—while remaining maintainable, testable, and highly decoupled.
+The system handles workflows like concurrency control during vehicle bookings, AI-assisted chat for car recommendations, and managing subscription states across multiple services.
 
 ---
 
 ## Table of Contents
-1. [Core Philosophy](#core-philosophy)
-2. [Architecture & Patterns](#architecture--patterns)
-3. [Domain Modules (Bounded Contexts)](#domain-modules-bounded-contexts)
+1. [Architecture Overview](#architecture-overview)
+2. [Patterns Used](#patterns-used)
+3. [Modules](#modules)
 4. [Microservices Integration](#microservices-integration)
-   - [The Saga Pattern](#the-saga-pattern)
+   - [Saga Pattern](#saga-pattern)
    - [Transactional Outbox](#transactional-outbox)
    - [Distributed Tracing](#distributed-tracing)
-5. [Deep Dives](#deep-dives)
+5. [How it works under the hood](#how-it-works-under-the-hood)
    - [Subscription State Machine](#subscription-state-machine)
-   - [AI Fleet Advisor (Vibe Search)](#ai-fleet-advisor-vibe-search)
-   - [Event-Driven Audit Logging](#event-driven-audit-logging)
+   - [AI Fleet Advisor](#ai-fleet-advisor)
+   - [Audit Logging](#audit-logging)
 6. [Directory Structure](#directory-structure)
 7. [Getting Started (Developer Setup)](#getting-started-developer-setup)
 8. [API Documentation](#api-documentation)
 
 ---
 
-## Core Philosophy
+## Architecture Overview
 
-We operate on a **Distributed Architecture** that evolved from a Modular Monolith. The core backend operates as a scalable monolith, but highly autonomous domains (like the Subscription service) have been extracted into independent **Microservices**. 
+The backend uses a distributed architecture. It started as a modular monolith, but we recently extracted the Subscription logic into its own microservice to handle payments and billing cycles independently.
 
-- **Strict Domain Boundaries**: Modules and services cannot access each other's databases or internal implementations.
-- **Resilient Distributed Transactions**: We use the **Saga Pattern** with compensation transactions across service boundaries.
-- **Guaranteed Consistency**: The **Transactional Outbox Pattern** ensures that domain events and compensation messages are reliably delivered even in the face of network failures.
-- **Observability**: **Distributed Tracing** correlates logs and requests across the monolith and microservices using propagated Trace IDs.
+- **Domain Boundaries**: The monolith and microservices don't share databases. They communicate via APIs and events.
+- **Distributed Transactions**: We handle cross-service transactions (like creating a subscription and locking a car) using the Saga pattern.
+- **Outbox Pattern**: To make sure we don't lose events if the network drops, we use a transactional outbox to reliably push updates between services.
+- **Tracing**: We pass `X-Trace-Id` headers around to track requests across the monolith and the subscription service.
 
 ---
 
-## Architecture & Patterns
+## Patterns Used
 
-The backend strictly adheres to **Clean Architecture** principles:
+The backend codebase tries to stick to Clean Architecture concepts:
 
-* **CQRS (Command Query Responsibility Segregation)**: 
-  * *Writes (Commands)* encapsulate intent and mutate state via the Command Bus.
-  * *Reads (Queries)* bypass the domain layer completely, mapping database rows directly to highly optimized Read-Model DTOs via the Query Bus.
-* **Ports & Adapters (Hexagonal Architecture)**: Core business rules (Domain Layer) have zero dependencies on infrastructure (ORM, APIs, external libraries). Communication happens through abstract Ports (Interfaces) implemented by Adapters in the Infrastructure layer.
-* **Rich Domain Model & Aggregate Roots**: Entities are not mere data bags (anemic models); they protect their invariants. State changes happen via explicit domain methods.
-* **Concurrency Control**: Pessimistic write locks (`PESSIMISTIC_WRITE`) are utilized during critical checkout phases to prevent vehicle double-booking under high load.
+* **CQRS**: 
+  * Writes go through the Command Bus to mutate state.
+  * Reads bypass the domain and use the Query Bus to fetch DTOs directly from the database.
+* **Ports & Adapters**: Core business logic doesn't depend on Doctrine or external APIs directly. We use interfaces (Ports) and implement them in the infrastructure layer.
+* **Domain Driven Design**: We use aggregate roots to protect data invariants instead of just relying on simple setters.
+* **Pessimistic Locking**: When a user tries to book a car, we use `SELECT ... FOR UPDATE` to make sure two users can't book the same car at the exact same millisecond.
 
 ```mermaid
 graph TD
@@ -94,41 +94,39 @@ graph TD
 
 ---
 
-## Domain Modules (Bounded Contexts)
+## Modules
 
-1. **User Module (Monolith)**: Handles authentication (LexikJWT), authorization, and user profiles.
-2. **Car Module (Monolith)**: Manages the fleet inventory, availability, and the AI-driven natural language search (Vibe Search).
-3. **AuditLog Module (Monolith)**: An isolated observer context that listens to domain events from other modules and durably records them for compliance and history tracking.
-4. **Subscription Service (Microservice)**: An independent microservice that manages the complex lifecycle of car rentals, handling Stripe payment webhooks, billing cycles, and status transitions, communicating with the monolith via HTTP APIs and Message Buses.
+1. **User (Monolith)**: Handles JWT authentication and basic user profiles.
+2. **Car (Monolith)**: Keeps track of vehicle inventory and handles the AI-powered search.
+3. **AuditLog (Monolith)**: Listens to domain events and records history logs.
+4. **Subscription (Microservice)**: A standalone service handling Stripe webhooks, billing cycles, and subscription status changes.
 
 ---
 
 ## Microservices Integration
 
-### The Saga Pattern
-When a user subscribes to a car, the Subscription Service (microservice) must coordinate with the Car Module (monolith) to lock the vehicle. We use the **Choreography Saga Pattern** to ensure consistency across databases without distributed locking.
-- **Step 1:** The Subscription Service creates a Pending subscription.
-- **Step 2:** It makes an API call to the Monolith to lock the vehicle.
-- **Step 3:** If the local database fails to update to "Locked" after the vehicle was successfully locked remotely, a **Compensation Transaction** is triggered to unlock the vehicle on the Monolith.
+### Saga Pattern
+When a user subscribes, the Subscription Service (microservice) needs to tell the Car Module (monolith) to lock the vehicle. 
+- The Subscription Service creates a "Pending" subscription.
+- It calls the Monolith API to lock the vehicle.
+- If the local database update fails after the remote call succeeds, a compensation job runs to unlock the vehicle on the Monolith.
 
 ### Transactional Outbox
-To guarantee that compensation transactions are never lost if the network fails during a Saga rollback, we utilize the **Transactional Outbox Pattern**:
-1. Compensation messages (e.g., `RetryCompensationMessage`) are serialized and inserted into an `outbox_messages` table in the exact same database transaction as the business failure.
-2. An asynchronous background worker (`app:process-outbox`) uses `SELECT ... FOR UPDATE SKIP LOCKED` to safely pull messages and execute the HTTP calls to the Monolith.
-3. The command strictly deserializes only whitelisted message classes, maintaining robust security.
+To make sure compensation requests aren't lost if the server crashes during a Saga rollback:
+1. Compensation messages are saved to an `outbox_messages` table in the exact same database transaction as the failure.
+2. A cron/worker (`app:process-outbox`) uses `SKIP LOCKED` to safely pick up pending messages and execute the HTTP calls to the Monolith.
 
 ### Distributed Tracing
-To debug requests spanning multiple services, we implement **Distributed Tracing**. 
-- Every incoming HTTP request or CLI command generates (or inherits) a UUID `X-Trace-Id`.
-- This ID is automatically injected into all internal logs (Monolog Processor) and outgoing HTTP requests to other services.
-- The receiving microservice parses this header and continues the trace, allowing for seamless cross-service observability.
+To help debug requests:
+- We generate a UUID `X-Trace-Id` on incoming requests.
+- This ID gets logged by Monolog and passed along in headers to any downstream HTTP requests so we can trace the whole flow.
 
 ---
 
-## Deep Dives
+## How it works under the hood
 
 ### Subscription State Machine
-To guarantee that subscription states (e.g., Active, Suspended, Cancelled) cannot be bypassed or corrupted, the `Subscription` aggregate root uses explicit Transition classes. 
+To prevent invalid state changes (e.g., jumping from "Cancelled" back to "Active"), the `Subscription` entity uses dedicated Transition classes instead of generic setters.
 
 ```mermaid
 stateDiagram-v2
@@ -140,10 +138,9 @@ stateDiagram-v2
     SUSPENDED --> ACTIVE : ReactivateTransition (Debt Settled)
     SUSPENDED --> CANCELLED : CancelTransition (Terminal Failure)
 ```
-*Transitions implement `SubscriptionTransitionInterface`. Invalid attempts throw an `IllegalTransitionException` before any database flush occurs.*
 
-### AI Fleet Advisor (Vibe Search)
-The Car module leverages LLMs (DeepSeek/OpenAI via Symfony AI) to parse natural language queries into strict search criteria.
+### AI Fleet Advisor
+The Car module hooks into LLMs (DeepSeek/OpenAI via Symfony AI) to parse what the user types into actual database search criteria.
 
 ```mermaid
 sequenceDiagram
@@ -162,8 +159,8 @@ sequenceDiagram
     ChatPublisher-->>User: SSE (Server-Sent Events) Stream
 ```
 
-### Event-Driven Audit Logging
-When an Aggregate Root (like a User or Subscription) undergoes a significant state change, it records a Domain Event. After the transaction commits, these events (implementing `AuditableEventInterface`) are dispatched. The **AuditLog** module listens to these events entirely asynchronously, completely decoupling the core transaction from the auditing requirement.
+### Audit Logging
+When something important changes (like a subscription activating), a domain event is fired. The AuditLog module listens to these events asynchronously and saves a log entry. This keeps the auditing logic completely separate from the core business transactions.
 
 ---
 
