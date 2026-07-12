@@ -1,0 +1,44 @@
+framework:
+    messenger:
+        default_bus: command.bus
+        buses:
+            command.bus:
+                middleware:
+                    - App\Shared\Infrastructure\Trace\TraceMessengerMiddleware
+                    - validation
+                    - doctrine_transaction: ['default']
+            query.bus:
+                middleware:
+                    - validation
+            event.bus:
+                default_middleware:
+                    allow_no_handlers: true
+                middleware:
+                    - App\Shared\Infrastructure\Trace\TraceMessengerMiddleware
+
+        transports:
+            sync: 'sync://'
+            async_events:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    exchange:
+                        name: domain_events
+                        type: topic
+                    queues:
+                        events_queue: ~
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 0
+            failed:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    exchange:
+                        name: dlx
+                        type: direct
+                    queues:
+                        dlq: ~
+
+        routing:
+            'App\Shared\Domain\Event\AuditableEventInterface': async_events
