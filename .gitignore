@@ -4,3 +4,6 @@
 # IDE files
 .vscode/
 .idea/
+
+# Graphify tool output
+/graphify-out/

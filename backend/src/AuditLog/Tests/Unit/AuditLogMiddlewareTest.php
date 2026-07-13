@@ -7,11 +7,6 @@ namespace App\AuditLog\Tests\Unit;
 use App\AuditLog\Application\Command\CreateAuditLog\CreateAuditLogCommand;
 use App\AuditLog\Infrastructure\Middleware\AuditLogMiddleware;
 use App\Shared\Domain\Event\AuditableEventInterface;
-use App\Subscription\Domain\Event\PaymentCompletedEvent;
-use App\Subscription\Domain\Event\PaymentConflictDetectedEvent;
-use App\Subscription\Domain\Event\PaymentDisputedEvent;
-use App\Subscription\Domain\Event\PaymentFailedEvent;
-use App\Subscription\Domain\Event\PaymentRefundedEvent;
 use App\User\Domain\Entity\User;
 use App\User\Infrastructure\Security\SecurityUser;
 use App\Shared\Domain\ValueObject\Email;
@@ -150,31 +145,56 @@ class AuditLogMiddlewareTest extends TestCase
     {
         return [
             'payment completed' => [
-                new PaymentCompletedEvent(paymentId: 'pay-777', subscriptionId: 'sub-888'),
+                new StubAuditableEvent(
+                    eventType: 'subscription.payment_completed',
+                    aggregateId: 'pay-777',
+                    aggregateType: 'Payment',
+                    auditPayload: ['subscriptionId' => 'sub-888']
+                ),
                 'subscription.payment_completed',
                 'pay-777',
                 'Payment',
             ],
             'payment failed' => [
-                new PaymentFailedEvent(paymentId: 'pay-777', subscriptionId: 'sub-888'),
+                new StubAuditableEvent(
+                    eventType: 'subscription.payment_failed',
+                    aggregateId: 'pay-777',
+                    aggregateType: 'Payment',
+                    auditPayload: ['subscriptionId' => 'sub-888']
+                ),
                 'subscription.payment_failed',
                 'pay-777',
                 'Payment',
             ],
             'payment refunded' => [
-                new PaymentRefundedEvent(paymentId: 'pay-777', subscriptionId: 'sub-888'),
+                new StubAuditableEvent(
+                    eventType: 'subscription.payment_refunded',
+                    aggregateId: 'pay-777',
+                    aggregateType: 'Payment',
+                    auditPayload: ['subscriptionId' => 'sub-888']
+                ),
                 'subscription.payment_refunded',
                 'pay-777',
                 'Payment',
             ],
             'payment disputed' => [
-                new PaymentDisputedEvent(paymentId: 'pay-777', subscriptionId: 'sub-888'),
+                new StubAuditableEvent(
+                    eventType: 'subscription.payment_disputed',
+                    aggregateId: 'pay-777',
+                    aggregateType: 'Payment',
+                    auditPayload: ['subscriptionId' => 'sub-888']
+                ),
                 'subscription.payment_disputed',
                 'pay-777',
                 'Payment',
             ],
             'payment conflict detected' => [
-                new PaymentConflictDetectedEvent(paymentId: 'pay-777', subscriptionId: 'sub-888'),
+                new StubAuditableEvent(
+                    eventType: 'subscription.payment_conflict_detected',
+                    aggregateId: 'pay-777',
+                    aggregateType: 'Payment',
+                    auditPayload: ['subscriptionId' => 'sub-888']
+                ),
                 'subscription.payment_conflict_detected',
                 'pay-777',
                 'Payment',

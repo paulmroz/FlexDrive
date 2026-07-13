@@ -1,5 +1,15 @@
 version: "3.8"
 services:
+  gateway:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+      - subscription-service
+
   php:
     build:
       context: ./backend
@@ -8,6 +18,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ./subscription-service:/subscription-service
     environment:
       SERVER_NAME: :8000
       DATABASE_URL: "postgresql://app:password@db:5432/app?serverVersion=16&charset=utf8"
@@ -72,3 +83,41 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+
+  subscription-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./subscription-service:/app
+      - ./backend/config/jwt:/app/config/jwt:ro
+    environment:
+      SERVER_NAME: :8000
+      DATABASE_URL: "postgresql://app:password@db_subscription:5432/app?serverVersion=16&charset=utf8"
+      REDIS_URL: "redis://redis:6379"
+      MESSENGER_TRANSPORT_DSN: "amqp://app:password@rabbitmq:5672/%2f/messages"
+      STRIPE_WEBHOOK_SECRET: "whsec_ab87eae59683a273803ac934e62767471801a7ba37cc46648c41f35d36f52ffc"
+      STRIPE_SECRET_KEY: "sk_test_dummy"
+      CLEANUP_ABANDONED_THRESHOLD: "-10 minutes"
+    depends_on:
+      - db_subscription
+      - redis
+      - rabbitmq
+
+  subscription-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./subscription-service:/app
+    environment:
+      DATABASE_URL: "postgresql://app:password@db_subscription:5432/app?serverVersion=16&charset=utf8"
+      REDIS_URL: "redis://redis:6379"
+      MESSENGER_TRANSPORT_DSN: "amqp://app:password@rabbitmq:5672/%2f/messages"
+    command: php bin/console messenger:consume async_events failed -vv
+    depends_on:
+      - db_subscription
+      - redis
+      - rabbitmq
