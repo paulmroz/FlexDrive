@@ -55,3 +55,8 @@ services:
     App\AuditLog\Infrastructure\Middleware\AuditLogMiddleware:
         arguments:
             $commandBus: '@command.bus'
+
+    # Listen to JWT creation events (to inject user ID into JWT payload)
+    App\User\Infrastructure\EventListener\JWTCreatedListener:
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_jwt_created, method: onJWTCreated }

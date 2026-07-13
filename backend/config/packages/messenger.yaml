@@ -7,7 +7,6 @@ framework:
                     - App\Shared\Infrastructure\Trace\TraceMessengerMiddleware
                     - validation
                     - doctrine_transaction: ['default']
-                    - doctrine_transaction: ['subscription']
             query.bus:
                 middleware:
                     - validation

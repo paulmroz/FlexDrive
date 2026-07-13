@@ -5,9 +5,6 @@ doctrine:
             default:
                 url: '%env(resolve:DATABASE_URL)%'
                 profiling_collect_backtrace: '%kernel.debug%'
-            subscription:
-                url: '%env(resolve:SUBSCRIPTION_DATABASE_URL)%'
-                profiling_collect_backtrace: '%kernel.debug%'
 
     orm:
         default_entity_manager: default
@@ -35,17 +32,7 @@ doctrine:
                         dir: '%kernel.project_dir%/src/AuditLog/Domain/Entity'
                         prefix: 'App\AuditLog\Domain\Entity'
                         alias: AuditLog
-            subscription:
-                connection: subscription
-                naming_strategy: doctrine.orm.naming_strategy.underscore
-                validate_xml_mapping: true
-                mappings:
-                    Subscription:
-                        type: attribute
-                        is_bundle: false
-                        dir: '%kernel.project_dir%/src/Subscription/Domain/Entity'
-                        prefix: 'App\Subscription\Domain\Entity'
-                        alias: Subscription
+
 
 
 when@test:
@@ -53,8 +40,6 @@ when@test:
         dbal:
             connections:
                 default:
-                    dbname_suffix: '_test%env(default::TEST_TOKEN)%'
-                subscription:
                     dbname_suffix: '_test%env(default::TEST_TOKEN)%'
 
 when@prod:
